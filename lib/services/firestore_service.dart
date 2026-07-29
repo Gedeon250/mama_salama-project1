@@ -21,6 +21,9 @@ import '../models/user_models.dart';
 ///   medicalRecords/{id}              - MedicalRecord docs, written by a CHW
 ///   labResults/{id}                  - LabResult docs, written by a CHW
 ///   vaccineRecords/{id}              - VaccineRecord docs, written by a CHW
+///   educationContent/{id}            - EducationContent docs, written by an Admin
+///   communityGroups/{id}             - CommunityGroup docs
+///   communityGroups/{id}/posts/{id}  - CommunityPost docs, one per group
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
@@ -31,6 +34,8 @@ class FirestoreService {
   CollectionReference<Map<String, dynamic>> get _medicalRecords => _db.collection('medicalRecords');
   CollectionReference<Map<String, dynamic>> get _labResults => _db.collection('labResults');
   CollectionReference<Map<String, dynamic>> get _vaccineRecords => _db.collection('vaccineRecords');
+  CollectionReference<Map<String, dynamic>> get _educationContent => _db.collection('educationContent');
+  CollectionReference<Map<String, dynamic>> get _communityGroups => _db.collection('communityGroups');
 
   // ----- Users / roles -----
 
@@ -277,5 +282,37 @@ class FirestoreService {
     await threadRef.collection('messages').add(
           ChatMessage(id: '', senderId: senderId, senderName: senderName, text: text, sentAt: DateTime.now()).toDoc(),
         );
+  }
+
+  // ----- Education content -----
+  // Written only by Admins; read by everyone signed in.
+
+  Stream<List<EducationContent>> watchEducationContent() {
+    return _educationContent.snapshots().map((snap) => snap.docs.map((d) => EducationContent.fromDoc(d.id, d.data())).toList());
+  }
+
+  Future<void> addEducationContent(EducationContent item) {
+    return _educationContent.add(item.toDoc());
+  }
+
+  // ----- Community groups + posts -----
+  // Groups are seeded once (console/admin script, not through the app UI);
+  // posts can be created by any signed-in mother or CHW.
+
+  Stream<List<CommunityGroup>> watchCommunityGroups() {
+    return _communityGroups.snapshots().map((snap) => snap.docs.map((d) => CommunityGroup.fromDoc(d.id, d.data())).toList());
+  }
+
+  Stream<List<CommunityPost>> watchPostsForGroup(String groupId) {
+    return _communityGroups
+        .doc(groupId)
+        .collection('posts')
+        .orderBy('postedAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => CommunityPost.fromDoc(d.id, d.data())).toList());
+  }
+
+  Future<void> addCommunityPost(String groupId, CommunityPost post) {
+    return _communityGroups.doc(groupId).collection('posts').add(post.toDoc());
   }
 }

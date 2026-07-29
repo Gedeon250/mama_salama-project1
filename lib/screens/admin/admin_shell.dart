@@ -34,6 +34,7 @@ class _AdminShellState extends State<AdminShell> {
           _DashboardTab(firestore: _firestore),
           _HealthWorkersTab(firestore: _firestore, admin: session.currentUser!),
           _MothersTab(firestore: _firestore),
+          _LearnTab(firestore: _firestore),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -43,6 +44,7 @@ class _AdminShellState extends State<AdminShell> {
           NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'Dashboard'),
           NavigationDestination(icon: Icon(Icons.volunteer_activism_outlined), selectedIcon: Icon(Icons.volunteer_activism), label: 'Health Workers'),
           NavigationDestination(icon: Icon(Icons.pregnant_woman_outlined), selectedIcon: Icon(Icons.pregnant_woman), label: 'Mothers'),
+          NavigationDestination(icon: Icon(Icons.menu_book_outlined), selectedIcon: Icon(Icons.menu_book), label: 'Learn'),
         ],
       ),
     );
@@ -319,6 +321,176 @@ class _MothersTab extends StatelessWidget {
               .toList(),
         );
       },
+    );
+  }
+}
+
+class _LearnTab extends StatelessWidget {
+  final FirestoreService firestore;
+  const _LearnTab({required this.firestore});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showAddLessonSheet(context, firestore),
+        icon: const Icon(Icons.add),
+        label: const Text('Add Lesson'),
+      ),
+      body: StreamBuilder<List<EducationContent>>(
+        stream: firestore.watchEducationContent(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Padding(padding: const EdgeInsets.all(24), child: EmptyHint(icon: Icons.error_outline, text: 'Could not load: ${snapshot.error}')));
+          }
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          final items = snapshot.data!;
+          if (items.isEmpty) {
+            return const Center(child: Padding(padding: EdgeInsets.all(24), child: EmptyHint(text: 'No lessons yet — tap "Add Lesson" to create one.')));
+          }
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.edgeMargin, AppSpacing.sm, AppSpacing.edgeMargin, AppSpacing.xl),
+            children: items
+                .map((item) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: BentoCard(
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(color: AppColors.onTertiaryContainer, borderRadius: BorderRadius.circular(AppRadius.md)),
+                              child: Icon(
+                                item.format == EducationFormat.video
+                                    ? Icons.play_circle_outline
+                                    : item.format == EducationFormat.audio
+                                        ? Icons.headphones_outlined
+                                        : Icons.article_outlined,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(item.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                                  Text(item.description, style: const TextStyle(fontSize: 12, color: AppColors.secondary), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      PillChip(label: item.category),
+                                      const SizedBox(width: 6),
+                                      Text(item.durationOrLength, style: const TextStyle(fontSize: 11, color: AppColors.outline)),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ))
+                .toList(),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showAddLessonSheet(BuildContext context, FirestoreService firestore) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl))),
+      builder: (ctx) => _AddLessonSheet(firestore: firestore),
+    );
+  }
+}
+
+class _AddLessonSheet extends StatefulWidget {
+  final FirestoreService firestore;
+  const _AddLessonSheet({required this.firestore});
+
+  @override
+  State<_AddLessonSheet> createState() => _AddLessonSheetState();
+}
+
+class _AddLessonSheetState extends State<_AddLessonSheet> {
+  final _titleController = TextEditingController();
+  final _categoryController = TextEditingController();
+  final _durationController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _mediaUrlController = TextEditingController();
+  EducationFormat _format = EducationFormat.article;
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _categoryController.dispose();
+    _durationController.dispose();
+    _descriptionController.dispose();
+    _mediaUrlController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    await widget.firestore.addEducationContent(EducationContent(
+      id: '',
+      title: _titleController.text.trim(),
+      category: _categoryController.text.trim(),
+      format: _format,
+      durationOrLength: _durationController.text.trim(),
+      description: _descriptionController.text.trim(),
+      mediaUrl: _mediaUrlController.text.trim().isEmpty ? null : _mediaUrlController.text.trim(),
+    ));
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: AppSpacing.edgeMargin,
+        right: AppSpacing.edgeMargin,
+        top: AppSpacing.md,
+        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.md,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Add Lesson', style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 16),
+            TextField(controller: _titleController, decoration: const InputDecoration(labelText: 'Title')),
+            const SizedBox(height: 12),
+            TextField(controller: _categoryController, decoration: const InputDecoration(labelText: 'Category (e.g. Nutrition, Danger Signs)')),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              children: EducationFormat.values
+                  .map((f) => PillChip(label: f.name, selected: _format == f, onTap: () => setState(() => _format = f)))
+                  .toList(),
+            ),
+            const SizedBox(height: 12),
+            TextField(controller: _durationController, decoration: const InputDecoration(labelText: 'Duration (e.g. 6 min, 4 min read)')),
+            const SizedBox(height: 12),
+            TextField(controller: _descriptionController, maxLines: 3, decoration: const InputDecoration(labelText: 'Description')),
+            const SizedBox(height: 12),
+            TextField(controller: _mediaUrlController, decoration: const InputDecoration(labelText: 'Media URL (optional)')),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _saving ? null : _save,
+                child: Text(_saving ? 'Saving...' : 'Save Lesson'),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

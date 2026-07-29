@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/app_data.dart';
-import '../models/models.dart';
+import '../models/user_models.dart';
+import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import 'video_lesson_screen.dart';
@@ -31,18 +30,26 @@ class _EducationCenterScreenState extends State<EducationCenterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final data = context.watch<AppData>();
-    final items = data.educationItems
-        .where((e) => _query.isEmpty || e.title.toLowerCase().contains(_query.toLowerCase()) || e.category.toLowerCase().contains(_query.toLowerCase()))
-        .toList();
+    final firestore = FirestoreService();
 
     return Scaffold(
       appBar: const MamaAppBar(title: 'Education Center', showBack: true),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.edgeMargin, AppSpacing.sm, AppSpacing.edgeMargin, AppSpacing.xl,
-        ),
-        children: [
+      body: StreamBuilder<List<EducationContent>>(
+        stream: firestore.watchEducationContent(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Padding(padding: const EdgeInsets.all(24), child: EmptyHint(icon: Icons.error_outline, text: 'Could not load: ${snapshot.error}')));
+          }
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          final items = snapshot.data!
+              .where((e) => _query.isEmpty || e.title.toLowerCase().contains(_query.toLowerCase()) || e.category.toLowerCase().contains(_query.toLowerCase()))
+              .toList();
+
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.edgeMargin, AppSpacing.sm, AppSpacing.edgeMargin, AppSpacing.xl,
+            ),
+            children: [
           Row(
             children: [
               const Icon(Icons.language, size: 18, color: AppColors.secondary),
@@ -118,6 +125,7 @@ class _EducationCenterScreenState extends State<EducationCenterScreen> {
 
           const SectionHeader(title: 'All Topics'),
           const SizedBox(height: 12),
+          if (items.isEmpty) const BentoCard(child: EmptyHint(text: 'No lessons yet — check back soon.')),
           ...items.map((item) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: BentoCard(
@@ -153,7 +161,9 @@ class _EducationCenterScreenState extends State<EducationCenterScreen> {
                   ),
                 ),
               )),
-        ],
+            ],
+          );
+        },
       ),
     );
   }

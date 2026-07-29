@@ -102,6 +102,29 @@ service cloud.firestore {
       allow create: if signedIn() && (isAssignedChwFor(request.resource.data.motherId) || isAdmin());
     }
 
+    // ---- educationContent/{id} : lessons, written by Admins only ----
+    match /educationContent/{id} {
+      allow read: if signedIn();
+      allow create: if isAdmin();
+    }
+
+    // ---- communityGroups/{id} + posts subcollection ----
+    // Groups are seeded once outside the app (console/admin script) —
+    // there's no in-app "create group" flow. Posts can be made by any
+    // signed-in mother or CHW; isExpertAnswer must match the poster's real
+    // role, not just whatever the client claims.
+    match /communityGroups/{groupId} {
+      allow read: if signedIn();
+      allow create: if isAdmin();
+
+      match /posts/{postId} {
+        allow read: if signedIn();
+        allow create: if signedIn() &&
+          request.resource.data.authorId == request.auth.uid &&
+          request.resource.data.isExpertAnswer == (myRole() == 'chw');
+      }
+    }
+
     // ---- chatThreads/{threadId} + messages subcollection ----
     // threadId is always "<uidA>_<uidB>" sorted, so a participant's own
     // uid is always one of the two underscore-separated segments.

@@ -425,3 +425,140 @@ class ChatMessage {
         'sentAt': FieldValue.serverTimestamp(),
       };
 }
+
+enum EducationFormat { video, article, audio }
+
+EducationFormat _formatFromString(String? value) {
+  return EducationFormat.values.firstWhere((f) => f.name == value, orElse: () => EducationFormat.article);
+}
+
+/// Lesson content, authored by Admins only — everyone else has read-only
+/// access. See FirestoreService.watchEducationContent.
+class EducationContent {
+  final String id;
+  final String title;
+  final String category;
+  final EducationFormat format;
+  final String durationOrLength;
+  final String description;
+  final String? mediaUrl;
+
+  EducationContent({
+    required this.id,
+    required this.title,
+    required this.category,
+    required this.format,
+    required this.durationOrLength,
+    required this.description,
+    this.mediaUrl,
+  });
+
+  factory EducationContent.fromDoc(String id, Map<String, dynamic> data) {
+    return EducationContent(
+      id: id,
+      title: data['title'] ?? '',
+      category: data['category'] ?? '',
+      format: _formatFromString(data['format'] as String?),
+      durationOrLength: data['durationOrLength'] ?? '',
+      description: data['description'] ?? '',
+      mediaUrl: data['mediaUrl'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toDoc() => {
+        'title': title,
+        'category': category,
+        'format': format.name,
+        'durationOrLength': durationOrLength,
+        'description': description,
+        'mediaUrl': mediaUrl,
+      };
+}
+
+/// Top-level community group, e.g. "Trimester 2 Support". Posts live in
+/// the `posts` subcollection — see CommunityPost.
+class CommunityGroup {
+  final String id;
+  final String name;
+  final String trimesterTag;
+  final int memberCount;
+  final String description;
+
+  CommunityGroup({
+    required this.id,
+    required this.name,
+    required this.trimesterTag,
+    required this.memberCount,
+    required this.description,
+  });
+
+  factory CommunityGroup.fromDoc(String id, Map<String, dynamic> data) {
+    return CommunityGroup(
+      id: id,
+      name: data['name'] ?? '',
+      trimesterTag: data['trimesterTag'] ?? '',
+      memberCount: (data['memberCount'] as num?)?.toInt() ?? 0,
+      description: data['description'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toDoc() => {
+        'name': name,
+        'trimesterTag': trimesterTag,
+        'memberCount': memberCount,
+        'description': description,
+      };
+}
+
+/// A post in communityGroups/{groupId}/posts. Any signed-in mother or CHW
+/// can create one; `isExpertAnswer` is enforced server-side (in
+/// firestore.rules) to match the poster's real role, not just a value the
+/// client claims.
+class CommunityPost {
+  final String id;
+  final String author;
+  final String authorId;
+  final String content;
+  final String tag;
+  final int likes;
+  final int comments;
+  final bool isExpertAnswer;
+  final DateTime postedAt;
+
+  CommunityPost({
+    required this.id,
+    required this.author,
+    required this.authorId,
+    required this.content,
+    required this.tag,
+    this.likes = 0,
+    this.comments = 0,
+    this.isExpertAnswer = false,
+    required this.postedAt,
+  });
+
+  factory CommunityPost.fromDoc(String id, Map<String, dynamic> data) {
+    return CommunityPost(
+      id: id,
+      author: data['author'] ?? '',
+      authorId: data['authorId'] ?? '',
+      content: data['content'] ?? '',
+      tag: data['tag'] ?? '',
+      likes: (data['likes'] as num?)?.toInt() ?? 0,
+      comments: (data['comments'] as num?)?.toInt() ?? 0,
+      isExpertAnswer: data['isExpertAnswer'] ?? false,
+      postedAt: (data['postedAt'] is Timestamp) ? (data['postedAt'] as Timestamp).toDate() : DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toDoc() => {
+        'author': author,
+        'authorId': authorId,
+        'content': content,
+        'tag': tag,
+        'likes': likes,
+        'comments': comments,
+        'isExpertAnswer': isExpertAnswer,
+        'postedAt': FieldValue.serverTimestamp(),
+      };
+}

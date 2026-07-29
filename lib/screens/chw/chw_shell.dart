@@ -7,6 +7,7 @@ import '../../services/firestore_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/chat_view.dart';
+import '../community_hub_screen.dart';
 
 class ChwShell extends StatefulWidget {
   const ChwShell({super.key});
@@ -28,6 +29,11 @@ class _ChwShellState extends State<ChwShell> {
       appBar: AppBar(
         title: const Text('Health Worker'),
         actions: [
+          IconButton(
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CommunityHubScreen())),
+            icon: const Icon(Icons.groups_outlined),
+            tooltip: 'Community',
+          ),
           IconButton(onPressed: session.signOut, icon: const Icon(Icons.logout)),
         ],
       ),
