@@ -1,0 +1,96 @@
+rules_version = '2';
+
+// Deploy with: firebase deploy --only firestore:rules
+// (after `firebase init firestore` in this project, using the Firebase
+// project you created for MamaSalama)
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function myRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return signedIn() && myRole() == 'admin';
+    }
+
+    // ---- users/{uid} : AppUser docs (mother / chw / admin) ----
+    // Also holds a `pregnancyProfile` map field, covered by the same
+    // read/update rules as the rest of the doc.
+    match /users/{uid} {
+      allow read: if signedIn();
+      // Anyone can create their own account doc on signup.
+      allow create: if signedIn() && request.auth.uid == uid;
+      // A user can update their own doc; an admin can update anyone's
+      // (used for assigning a CHW to a mother).
+      allow update: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow delete: if isAdmin();
+
+      // ---- users/{uid}/vitals/{yyyy-MM-dd} : DailyVitals docs ----
+      // A mother owns her own daily logs; her assigned CHW or any admin
+      // can read (never write) them.
+      match /vitals/{date} {
+        allow read, write: if signedIn() && request.auth.uid == uid;
+        allow read: if signedIn() && (
+          isAdmin() ||
+          (myRole() == 'chw' && get(/databases/$(database)/documents/users/$(uid)).data.assignedChwId == request.auth.uid)
+        );
+      }
+    }
+
+    // ---- helpRequests/{id} : SOS + "I need help" requests ----
+    match /helpRequests/{id} {
+      // Kept broad on read so a CHW can see the unassigned pool and an
+      // admin can see everything; tighten to per-role filters once you
+      // have real volume and want to shard requests further.
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.motherId == request.auth.uid;
+      // Mother can cancel her own request; CHW can claim/resolve; admin can
+      // assign/resolve any.
+      allow update: if signedIn() && (
+        resource.data.motherId == request.auth.uid ||
+        myRole() == 'chw' ||
+        isAdmin()
+      );
+    }
+
+    // ---- appointments/{id} : booked visits ----
+    match /appointments/{id} {
+      function isAssignedChw() {
+        return myRole() == 'chw' &&
+          get(/databases/$(database)/documents/users/$(resource.data.motherId)).data.assignedChwId == request.auth.uid;
+      }
+      allow read: if signedIn() && (resource.data.motherId == request.auth.uid || isAssignedChw() || isAdmin());
+      allow create: if signedIn() && request.resource.data.motherId == request.auth.uid;
+      allow update: if signedIn() && (resource.data.motherId == request.auth.uid || isAdmin());
+    }
+
+    // ---- reminders/{id} : one per booked appointment, read by the owning
+    // mother; not yet consumed by anything (hook for a future notification
+    // job) ----
+    match /reminders/{id} {
+      allow read: if signedIn() && resource.data.motherId == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.motherId == request.auth.uid;
+    }
+
+    // ---- chatThreads/{threadId} + messages subcollection ----
+    // threadId is always "<uidA>_<uidB>" sorted, so a participant's own
+    // uid is always one of the two underscore-separated segments.
+    match /chatThreads/{threadId} {
+      function isParticipant() {
+        return request.auth.uid in threadId.split('_');
+      }
+      allow read, write: if signedIn() && isParticipant();
+
+      match /messages/{messageId} {
+        allow read: if signedIn() && isParticipant();
+        allow create: if signedIn() && isParticipant() && request.resource.data.senderId == request.auth.uid;
+      }
+    }
+  }
+}
