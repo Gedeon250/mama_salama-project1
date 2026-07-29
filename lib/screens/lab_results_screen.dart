@@ -1,0 +1,84 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart' as intl;
+import '../providers/app_data.dart';
+import '../theme/app_theme.dart';
+import '../widgets/common.dart';
+
+class LabResultsScreen extends StatelessWidget {
+  const LabResultsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final data = context.watch<AppData>();
+
+    return Scaffold(
+      appBar: const MamaAppBar(title: 'Lab Results', showBack: true),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.edgeMargin, AppSpacing.sm, AppSpacing.edgeMargin, AppSpacing.xl,
+        ),
+        children: [
+          const Text('Your most recent laboratory results, with reference ranges for context.',
+              style: TextStyle(color: AppColors.secondary)),
+          const SizedBox(height: AppSpacing.md),
+          ...data.labResults.map((r) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: BentoCard(
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: r.isNormal ? AppColors.onTertiaryContainer : AppColors.errorContainer,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                        ),
+                        child: Icon(
+                          r.isNormal ? Icons.check_circle_outline : Icons.priority_high,
+                          color: r.isNormal ? AppColors.primary : AppColors.error,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(r.testName, style: const TextStyle(fontWeight: FontWeight.w700)),
+                            Text('Reference: ${r.referenceRange}', style: const TextStyle(fontSize: 12, color: AppColors.secondary)),
+                            Text(intl.DateFormat('MMM d, yyyy').format(r.date), style: const TextStyle(fontSize: 11, color: AppColors.outline)),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        r.value,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: r.isNormal ? AppColors.onSurface : AppColors.error,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )),
+          const SizedBox(height: AppSpacing.sm),
+          const BentoCard(
+            color: AppColors.onTertiaryContainer,
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: AppColors.primary),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Flagged results are not a diagnosis by themselves — discuss any out-of-range value with your CHW or doctor at your next visit.',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
