@@ -7,6 +7,30 @@
         { "fieldPath": "motherId", "order": "ASCENDING" },
         { "fieldPath": "dateTime", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "medicalRecords",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "motherId", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "labResults",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "motherId", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "vaccineRecords",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "motherId", "order": "ASCENDING" },
+        { "fieldPath": "dueOrGivenDate", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

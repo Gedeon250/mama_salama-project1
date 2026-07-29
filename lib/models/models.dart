@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 class MedicationDose {
   final String name;
   final String dosage;
@@ -11,52 +9,6 @@ class MedicationDose {
     required this.dosage,
     required this.time,
     this.taken = false,
-  });
-}
-
-class MedicalRecord {
-  final String title;
-  final String category; // e.g. "Visit note", "Ultrasound", "Delivery"
-  final DateTime date;
-  final String summary;
-  final IconData icon;
-
-  MedicalRecord({
-    required this.title,
-    required this.category,
-    required this.date,
-    required this.summary,
-    required this.icon,
-  });
-}
-
-class LabResult {
-  final String testName;
-  final String value;
-  final String referenceRange;
-  final bool isNormal;
-  final DateTime date;
-
-  LabResult({
-    required this.testName,
-    required this.value,
-    required this.referenceRange,
-    required this.isNormal,
-    required this.date,
-  });
-}
-
-class VaccineRecord {
-  final String name;
-  final String forWhom; // "Mother" or "Baby"
-  final DateTime dueOrGivenDate;
-  bool completed;
-
-  VaccineRecord({
-    required this.name,
-    required this.forWhom,
-    required this.dueOrGivenDate,
-    this.completed = false,
   });
 }
 

@@ -151,6 +151,125 @@ class DailyVitals {
   }
 }
 
+/// Visit note, written by a CHW for one of their assigned mothers.
+/// Mothers can only read their own — see firestore.rules.
+class MedicalRecord {
+  final String id;
+  final String motherId;
+  final String title;
+  final String category; // e.g. "Visit note", "Ultrasound", "Delivery"
+  final DateTime date;
+  final String summary;
+
+  MedicalRecord({
+    required this.id,
+    required this.motherId,
+    required this.title,
+    required this.category,
+    required this.date,
+    required this.summary,
+  });
+
+  factory MedicalRecord.fromDoc(String id, Map<String, dynamic> data) {
+    return MedicalRecord(
+      id: id,
+      motherId: data['motherId'] ?? '',
+      title: data['title'] ?? '',
+      category: data['category'] ?? '',
+      date: (data['date'] is Timestamp) ? (data['date'] as Timestamp).toDate() : DateTime.now(),
+      summary: data['summary'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toDoc() => {
+        'motherId': motherId,
+        'title': title,
+        'category': category,
+        'date': Timestamp.fromDate(date),
+        'summary': summary,
+      };
+}
+
+/// Lab result, written by a CHW for one of their assigned mothers.
+class LabResult {
+  final String id;
+  final String motherId;
+  final String testName;
+  final String value;
+  final String referenceRange;
+  final bool isNormal;
+  final DateTime date;
+
+  LabResult({
+    required this.id,
+    required this.motherId,
+    required this.testName,
+    required this.value,
+    required this.referenceRange,
+    required this.isNormal,
+    required this.date,
+  });
+
+  factory LabResult.fromDoc(String id, Map<String, dynamic> data) {
+    return LabResult(
+      id: id,
+      motherId: data['motherId'] ?? '',
+      testName: data['testName'] ?? '',
+      value: data['value'] ?? '',
+      referenceRange: data['referenceRange'] ?? '',
+      isNormal: data['isNormal'] ?? true,
+      date: (data['date'] is Timestamp) ? (data['date'] as Timestamp).toDate() : DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toDoc() => {
+        'motherId': motherId,
+        'testName': testName,
+        'value': value,
+        'referenceRange': referenceRange,
+        'isNormal': isNormal,
+        'date': Timestamp.fromDate(date),
+      };
+}
+
+/// Vaccination entry, written by a CHW for one of their assigned mothers.
+class VaccineRecord {
+  final String id;
+  final String motherId;
+  final String name;
+  final String forWhom; // "Mother" or "Baby"
+  final DateTime dueOrGivenDate;
+  final bool completed;
+
+  VaccineRecord({
+    required this.id,
+    required this.motherId,
+    required this.name,
+    required this.forWhom,
+    required this.dueOrGivenDate,
+    this.completed = false,
+  });
+
+  factory VaccineRecord.fromDoc(String id, Map<String, dynamic> data) {
+    return VaccineRecord(
+      id: id,
+      motherId: data['motherId'] ?? '',
+      name: data['name'] ?? '',
+      forWhom: data['forWhom'] ?? 'Mother',
+      dueOrGivenDate: (data['dueOrGivenDate'] is Timestamp) ? (data['dueOrGivenDate'] as Timestamp).toDate() : DateTime.now(),
+      completed: data['completed'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toDoc() => {
+        'motherId': motherId,
+        'name': name,
+        'forWhom': forWhom,
+        'dueOrGivenDate': Timestamp.fromDate(dueOrGivenDate),
+        'completed': completed,
+      };
+}
+
 enum AppointmentStatus { upcoming, completed, cancelled }
 
 /// A booked visit, stored top-level in `appointments/{id}` so a future

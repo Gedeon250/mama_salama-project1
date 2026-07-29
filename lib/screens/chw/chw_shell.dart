@@ -230,6 +230,11 @@ class _MyMothersTab extends StatelessWidget {
                               ],
                             ),
                           ),
+                          IconButton(
+                            onPressed: () => _showAddRecordSheet(context, firestore, m),
+                            icon: const Icon(Icons.note_add_outlined, color: AppColors.primary),
+                            tooltip: 'Add record',
+                          ),
                           const Icon(Icons.chat_bubble_outline, color: AppColors.primary),
                         ],
                       ),
@@ -238,6 +243,191 @@ class _MyMothersTab extends StatelessWidget {
               .toList(),
         );
       },
+    );
+  }
+
+  void _showAddRecordSheet(BuildContext context, FirestoreService firestore, AppUser forMother) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl))),
+      builder: (ctx) => _AddRecordSheet(firestore: firestore, forMother: forMother),
+    );
+  }
+}
+
+enum _RecordType { visitNote, labResult, vaccine }
+
+class _AddRecordSheet extends StatefulWidget {
+  final FirestoreService firestore;
+  final AppUser forMother;
+  const _AddRecordSheet({required this.firestore, required this.forMother});
+
+  @override
+  State<_AddRecordSheet> createState() => _AddRecordSheetState();
+}
+
+class _AddRecordSheetState extends State<_AddRecordSheet> {
+  _RecordType _type = _RecordType.visitNote;
+
+  // Visit note fields
+  final _titleController = TextEditingController();
+  final _categoryController = TextEditingController(text: 'Visit note');
+  final _summaryController = TextEditingController();
+
+  // Lab result fields
+  final _testNameController = TextEditingController();
+  final _valueController = TextEditingController();
+  final _referenceRangeController = TextEditingController();
+  bool _isNormal = true;
+
+  // Vaccine fields
+  final _vaccineNameController = TextEditingController();
+  String _forWhom = 'Mother';
+  bool _vaccineCompleted = false;
+
+  DateTime _date = DateTime.now();
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _categoryController.dispose();
+    _summaryController.dispose();
+    _testNameController.dispose();
+    _valueController.dispose();
+    _referenceRangeController.dispose();
+    _vaccineNameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    switch (_type) {
+      case _RecordType.visitNote:
+        await widget.firestore.addMedicalRecord(MedicalRecord(
+          id: '',
+          motherId: widget.forMother.uid,
+          title: _titleController.text.trim().isEmpty ? 'Visit note' : _titleController.text.trim(),
+          category: _categoryController.text.trim().isEmpty ? 'Visit note' : _categoryController.text.trim(),
+          date: _date,
+          summary: _summaryController.text.trim(),
+        ));
+        break;
+      case _RecordType.labResult:
+        await widget.firestore.addLabResult(LabResult(
+          id: '',
+          motherId: widget.forMother.uid,
+          testName: _testNameController.text.trim(),
+          value: _valueController.text.trim(),
+          referenceRange: _referenceRangeController.text.trim(),
+          isNormal: _isNormal,
+          date: _date,
+        ));
+        break;
+      case _RecordType.vaccine:
+        await widget.firestore.addVaccineRecord(VaccineRecord(
+          id: '',
+          motherId: widget.forMother.uid,
+          name: _vaccineNameController.text.trim(),
+          forWhom: _forWhom,
+          dueOrGivenDate: _date,
+          completed: _vaccineCompleted,
+        ));
+        break;
+    }
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: AppSpacing.edgeMargin,
+        right: AppSpacing.edgeMargin,
+        top: AppSpacing.md,
+        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.md,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Add Record for ${widget.forMother.name}', style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              children: [
+                PillChip(label: 'Visit Note', selected: _type == _RecordType.visitNote, onTap: () => setState(() => _type = _RecordType.visitNote)),
+                PillChip(label: 'Lab Result', selected: _type == _RecordType.labResult, onTap: () => setState(() => _type = _RecordType.labResult)),
+                PillChip(label: 'Vaccine', selected: _type == _RecordType.vaccine, onTap: () => setState(() => _type = _RecordType.vaccine)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (_type == _RecordType.visitNote) ...[
+              TextField(controller: _titleController, decoration: const InputDecoration(labelText: 'Title')),
+              const SizedBox(height: 12),
+              TextField(controller: _categoryController, decoration: const InputDecoration(labelText: 'Category (e.g. Visit note, Ultrasound, Delivery)')),
+              const SizedBox(height: 12),
+              TextField(controller: _summaryController, maxLines: 3, decoration: const InputDecoration(labelText: 'Summary')),
+            ] else if (_type == _RecordType.labResult) ...[
+              TextField(controller: _testNameController, decoration: const InputDecoration(labelText: 'Test name')),
+              const SizedBox(height: 12),
+              TextField(controller: _valueController, decoration: const InputDecoration(labelText: 'Value')),
+              const SizedBox(height: 12),
+              TextField(controller: _referenceRangeController, decoration: const InputDecoration(labelText: 'Reference range')),
+              const SizedBox(height: 12),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _isNormal,
+                onChanged: (v) => setState(() => _isNormal = v),
+                title: const Text('Within normal range'),
+              ),
+            ] else ...[
+              TextField(controller: _vaccineNameController, decoration: const InputDecoration(labelText: 'Vaccine name')),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Text('For: '),
+                  const SizedBox(width: 8),
+                  PillChip(label: 'Mother', selected: _forWhom == 'Mother', onTap: () => setState(() => _forWhom = 'Mother')),
+                  const SizedBox(width: 8),
+                  PillChip(label: 'Baby', selected: _forWhom == 'Baby', onTap: () => setState(() => _forWhom = 'Baby')),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _vaccineCompleted,
+                onChanged: (v) => setState(() => _vaccineCompleted = v),
+                title: const Text('Already given'),
+              ),
+            ],
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.calendar_today_outlined, size: 16),
+              label: Text(intl.DateFormat('MMM d, yyyy').format(_date)),
+              onPressed: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: _date,
+                  firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                  lastDate: DateTime.now().add(const Duration(days: 300)),
+                );
+                if (picked != null) setState(() => _date = picked);
+              },
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _saving ? null : _save,
+                child: Text(_saving ? 'Saving...' : 'Save Record'),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

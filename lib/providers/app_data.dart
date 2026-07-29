@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 
 /// In-memory mock data for what's not yet in Firestore (medications,
-/// medical records, labs, vaccines, education, community feed). Appointments
-/// and pregnancy profile/vitals have moved to Firestore — see
+/// education, community feed). Appointments, pregnancy profile/vitals, and
+/// medical records/labs/vaccines have moved to Firestore — see
 /// FirestoreService.
 class AppData extends ChangeNotifier {
   AppData() {
@@ -12,9 +12,6 @@ class AppData extends ChangeNotifier {
 
   late MotherProfile profile;
   final List<MedicationDose> todaysMedications = [];
-  final List<MedicalRecord> medicalRecords = [];
-  final List<LabResult> labResults = [];
-  final List<VaccineRecord> vaccines = [];
   final List<EducationItem> educationItems = [];
   final List<CommunityGroup> communityGroups = [];
   final List<CommunityPost> supportGroupPosts = [];
@@ -32,45 +29,6 @@ class AppData extends ChangeNotifier {
     ]);
 
     final now = DateTime.now();
-    medicalRecords.addAll([
-      MedicalRecord(
-        title: 'Second Trimester Checkup',
-        category: 'Visit note',
-        date: now.subtract(const Duration(days: 14)),
-        summary: 'Blood pressure normal, fundal height on track for 22 weeks.',
-        icon: Icons.medical_information_outlined,
-      ),
-      MedicalRecord(
-        title: 'Anatomy Ultrasound',
-        category: 'Ultrasound',
-        date: now.subtract(const Duration(days: 21)),
-        summary: 'Fetal anatomy scan normal. Placenta anterior, no previa.',
-        icon: Icons.monitor_heart_outlined,
-      ),
-      MedicalRecord(
-        title: 'Glucose Tolerance Test',
-        category: 'Lab',
-        date: now.subtract(const Duration(days: 28)),
-        summary: 'Results within normal range — see Lab Results for detail.',
-        icon: Icons.science_outlined,
-      ),
-    ]);
-
-    labResults.addAll([
-      LabResult(testName: 'Hemoglobin', value: '11.8 g/dL', referenceRange: '11.0–15.0 g/dL', isNormal: true, date: now.subtract(const Duration(days: 28))),
-      LabResult(testName: 'Fasting Glucose', value: '86 mg/dL', referenceRange: '< 95 mg/dL', isNormal: true, date: now.subtract(const Duration(days: 28))),
-      LabResult(testName: 'Urine Protein', value: 'Trace', referenceRange: 'Negative', isNormal: false, date: now.subtract(const Duration(days: 14))),
-      LabResult(testName: 'Blood Type & Rh', value: 'O Positive', referenceRange: '—', isNormal: true, date: now.subtract(const Duration(days: 120))),
-    ]);
-
-    vaccines.addAll([
-      VaccineRecord(name: 'Tetanus Toxoid (TT2)', forWhom: 'Mother', dueOrGivenDate: now.subtract(const Duration(days: 30)), completed: true),
-      VaccineRecord(name: 'Tetanus Toxoid (TT3)', forWhom: 'Mother', dueOrGivenDate: now.add(const Duration(days: 14)), completed: false),
-      VaccineRecord(name: 'Whooping Cough (Tdap)', forWhom: 'Mother', dueOrGivenDate: now.add(const Duration(days: 30)), completed: false),
-      VaccineRecord(name: 'BCG', forWhom: 'Baby', dueOrGivenDate: now.add(const Duration(days: 98)), completed: false),
-      VaccineRecord(name: 'Polio (OPV 0)', forWhom: 'Baby', dueOrGivenDate: now.add(const Duration(days: 98)), completed: false),
-    ]);
-
     educationItems.addAll([
       EducationItem(title: 'Nutrition in Your Second Trimester', category: 'Nutrition', format: EducationFormat.video, durationOrLength: '6 min', description: 'A nutritionist walks through balanced meals for weeks 13–26.'),
       EducationItem(title: 'Recognizing Danger Signs', category: 'Danger Signs', format: EducationFormat.article, durationOrLength: '4 min read', description: 'Warning signs that mean you should contact your CHW or hospital immediately.'),

@@ -19,6 +19,12 @@ service cloud.firestore {
       return signedIn() && myRole() == 'admin';
     }
 
+    // True if the caller is the CHW assigned to the given mother.
+    function isAssignedChwFor(motherId) {
+      return signedIn() && myRole() == 'chw' &&
+        get(/databases/$(database)/documents/users/$(motherId)).data.assignedChwId == request.auth.uid;
+    }
+
     // ---- users/{uid} : AppUser docs (mother / chw / admin) ----
     // Also holds a `pregnancyProfile` map field, covered by the same
     // read/update rules as the rest of the doc.
@@ -76,6 +82,24 @@ service cloud.firestore {
     match /reminders/{id} {
       allow read: if signedIn() && resource.data.motherId == request.auth.uid;
       allow create: if signedIn() && request.resource.data.motherId == request.auth.uid;
+    }
+
+    // ---- medicalRecords/{id}, labResults/{id}, vaccineRecords/{id} ----
+    // Written only by a CHW for one of their assigned mothers (or an
+    // admin); a mother can only ever read her own — no create/update.
+    match /medicalRecords/{id} {
+      allow read: if signedIn() && (resource.data.motherId == request.auth.uid || isAssignedChwFor(resource.data.motherId) || isAdmin());
+      allow create: if signedIn() && (isAssignedChwFor(request.resource.data.motherId) || isAdmin());
+    }
+
+    match /labResults/{id} {
+      allow read: if signedIn() && (resource.data.motherId == request.auth.uid || isAssignedChwFor(resource.data.motherId) || isAdmin());
+      allow create: if signedIn() && (isAssignedChwFor(request.resource.data.motherId) || isAdmin());
+    }
+
+    match /vaccineRecords/{id} {
+      allow read: if signedIn() && (resource.data.motherId == request.auth.uid || isAssignedChwFor(resource.data.motherId) || isAdmin());
+      allow create: if signedIn() && (isAssignedChwFor(request.resource.data.motherId) || isAdmin());
     }
 
     // ---- chatThreads/{threadId} + messages subcollection ----

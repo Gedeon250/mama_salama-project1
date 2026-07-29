@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart' as intl;
 import '../models/user_models.dart';
-import '../providers/app_data.dart';
 import '../providers/session_provider.dart';
 import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
@@ -13,7 +12,6 @@ class MedicalRecordsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final data = context.watch<AppData>();
     final mother = context.watch<SessionProvider>().currentUser!;
     final firestore = FirestoreService();
 
@@ -97,42 +95,72 @@ class MedicalRecordsScreen extends StatelessWidget {
 
           const SectionHeader(title: 'History'),
           const SizedBox(height: 12),
-          ...data.medicalRecords.map((r) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: BentoCard(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(color: AppColors.onTertiaryContainer, borderRadius: BorderRadius.circular(AppRadius.md)),
-                        child: Icon(r.icon, color: AppColors.primary),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
+          StreamBuilder<List<MedicalRecord>>(
+            stream: firestore.watchMedicalRecordsForMother(mother.uid),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return EmptyHint(icon: Icons.error_outline, text: 'Could not load records: ${snapshot.error}');
+              }
+              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+              final records = snapshot.data!;
+              if (records.isEmpty) {
+                return const EmptyHint(text: 'No visit notes yet — these are added by your health worker.');
+              }
+              return Column(
+                children: records
+                    .map((r) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: BentoCard(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Expanded(child: Text(r.title, style: const TextStyle(fontWeight: FontWeight.w700))),
-                                Text(intl.DateFormat('MMM d').format(r.date), style: const TextStyle(color: AppColors.secondary, fontSize: 12)),
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(color: AppColors.onTertiaryContainer, borderRadius: BorderRadius.circular(AppRadius.md)),
+                                  child: Icon(_iconForCategory(r.category), color: AppColors.primary),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Expanded(child: Text(r.title, style: const TextStyle(fontWeight: FontWeight.w700))),
+                                          Text(intl.DateFormat('MMM d').format(r.date), style: const TextStyle(color: AppColors.secondary, fontSize: 12)),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(r.category, style: const TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w700)),
+                                      const SizedBox(height: 6),
+                                      Text(r.summary, style: const TextStyle(fontSize: 13)),
+                                    ],
+                                  ),
+                                ),
                               ],
                             ),
-                            const SizedBox(height: 2),
-                            Text(r.category, style: const TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w700)),
-                            const SizedBox(height: 6),
-                            Text(r.summary, style: const TextStyle(fontSize: 13)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              )),
+                          ),
+                        ))
+                    .toList(),
+              );
+            },
+          ),
         ],
       ),
     );
+  }
+
+  IconData _iconForCategory(String category) {
+    switch (category.toLowerCase()) {
+      case 'ultrasound':
+        return Icons.monitor_heart_outlined;
+      case 'lab':
+        return Icons.science_outlined;
+      case 'delivery':
+        return Icons.child_friendly_outlined;
+      default:
+        return Icons.medical_information_outlined;
+    }
   }
 
   Widget _statTile(String label, String value) {

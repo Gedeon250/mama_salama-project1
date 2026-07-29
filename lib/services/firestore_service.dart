@@ -18,6 +18,9 @@ import '../models/user_models.dart';
 ///                                       hook for a future notification job
 ///   chatThreads/{threadId}/messages  - ChatMessage docs, one thread per
 ///                                       pair of participants
+///   medicalRecords/{id}              - MedicalRecord docs, written by a CHW
+///   labResults/{id}                  - LabResult docs, written by a CHW
+///   vaccineRecords/{id}              - VaccineRecord docs, written by a CHW
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
@@ -25,6 +28,9 @@ class FirestoreService {
   CollectionReference<Map<String, dynamic>> get _requests => _db.collection('helpRequests');
   CollectionReference<Map<String, dynamic>> get _appointments => _db.collection('appointments');
   CollectionReference<Map<String, dynamic>> get _reminders => _db.collection('reminders');
+  CollectionReference<Map<String, dynamic>> get _medicalRecords => _db.collection('medicalRecords');
+  CollectionReference<Map<String, dynamic>> get _labResults => _db.collection('labResults');
+  CollectionReference<Map<String, dynamic>> get _vaccineRecords => _db.collection('vaccineRecords');
 
   // ----- Users / roles -----
 
@@ -110,6 +116,46 @@ class FirestoreService {
 
   Future<void> setMood(String uid, String mood) {
     return _vitals(uid).doc(_dateId(DateTime.now())).set({'moodToday': mood, ..._todayStamp()}, SetOptions(merge: true));
+  }
+
+  // ----- Medical records, lab results, vaccinations -----
+  // Written only by a CHW for one of their assigned mothers (or an admin);
+  // a mother can only ever read her own — see firestore.rules.
+
+  Stream<List<MedicalRecord>> watchMedicalRecordsForMother(String motherId) {
+    return _medicalRecords
+        .where('motherId', isEqualTo: motherId)
+        .orderBy('date', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => MedicalRecord.fromDoc(d.id, d.data())).toList());
+  }
+
+  Future<void> addMedicalRecord(MedicalRecord record) {
+    return _medicalRecords.add(record.toDoc());
+  }
+
+  Stream<List<LabResult>> watchLabResultsForMother(String motherId) {
+    return _labResults
+        .where('motherId', isEqualTo: motherId)
+        .orderBy('date', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => LabResult.fromDoc(d.id, d.data())).toList());
+  }
+
+  Future<void> addLabResult(LabResult result) {
+    return _labResults.add(result.toDoc());
+  }
+
+  Stream<List<VaccineRecord>> watchVaccinesForMother(String motherId) {
+    return _vaccineRecords
+        .where('motherId', isEqualTo: motherId)
+        .orderBy('dueOrGivenDate', descending: false)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => VaccineRecord.fromDoc(d.id, d.data())).toList());
+  }
+
+  Future<void> addVaccineRecord(VaccineRecord record) {
+    return _vaccineRecords.add(record.toDoc());
   }
 
   // ----- Help requests (SOS + general "I need something") -----
