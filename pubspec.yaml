@@ -1,0 +1,28 @@
+name: mamasalama_app
+description: MamaSalama — maternal healthcare companion app (MVP frontend built from the Stitch design set).
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  provider: ^6.1.2
+  intl: ^0.19.0
+  cupertino_icons: ^1.0.8
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  # If you want the exact Stitch typefaces (Atkinson Hyperlegible Next + Inter),
+  # add the google_fonts package and swap the TextStyle calls in lib/theme/app_theme.dart,
+  # or drop .ttf files here and register them under a `fonts:` section.
