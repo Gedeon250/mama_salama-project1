@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "872737217222",
+    "project_id": "bustaxi-booking-app",
+    "storage_bucket": "bustaxi-booking-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:872737217222:android:213e523c80d7e1c17055c7",
+        "android_client_info": {
+          "package_name": "com.mamasalama.mamasalama_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "872737217222-2ecb7sfo7t824rab37quq3s42ojvhkq0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDU36SnYoi_Su12Id9yRip6sG_vE6JFLGA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "872737217222-2ecb7sfo7t824rab37quq3s42ojvhkq0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
