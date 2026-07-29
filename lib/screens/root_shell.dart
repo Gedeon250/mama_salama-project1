@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/session_provider.dart';
+import '../services/chat_alert_service.dart';
+import '../services/firestore_service.dart';
+import '../widgets/common.dart';
 import 'dashboard_screen.dart';
 import 'appointments_screen.dart';
 import 'health_screen.dart';
@@ -14,6 +19,7 @@ class RootShell extends StatefulWidget {
 
 class _RootShellState extends State<RootShell> {
   int _index = 0;
+  ChatAlertService? _chatAlerts;
 
   final _tabs = const [
     DashboardScreen(),
@@ -24,9 +30,27 @@ class _RootShellState extends State<RootShell> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    final me = context.read<SessionProvider>().currentUser!;
+    _chatAlerts = ChatAlertService(firestore: FirestoreService(), myUid: me.uid)..start();
+  }
+
+  @override
+  void dispose() {
+    _chatAlerts?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(index: _index, children: _tabs),
+      body: Column(
+        children: [
+          const ConnectivityBanner(),
+          Expanded(child: IndexedStack(index: _index, children: _tabs)),
+        ],
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),

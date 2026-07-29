@@ -195,11 +195,16 @@ class AppointmentsScreen extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () async {
+                    onPressed: () {
                       final dt = DateTime(selectedDate.year, selectedDate.month, selectedDate.day, selectedTime.hour, selectedTime.minute);
                       final navigator = Navigator.of(ctx);
                       final messenger = ScaffoldMessenger.of(context);
-                      await firestore.bookAppointment(Appointment(
+                      // Don't await the write future — it only resolves
+                      // after a server round-trip, so it would hang the
+                      // sheet open indefinitely while offline. The local
+                      // cache updates immediately and the write queues
+                      // until back online.
+                      firestore.bookAppointment(Appointment(
                         id: '',
                         motherId: mother.uid,
                         motherName: mother.name,

@@ -562,3 +562,34 @@ class CommunityPost {
         'postedAt': FieldValue.serverTimestamp(),
       };
 }
+
+/// Lightweight summary of a chatThreads/{threadId} doc — enough to show an
+/// unread indicator and a last-message preview without loading the full
+/// message history. See FirestoreService.watchMyThreads.
+class ChatThreadSummary {
+  final String threadId;
+  final String otherUid;
+  final String lastMessage;
+  final String lastSenderId;
+  final DateTime updatedAt;
+
+  ChatThreadSummary({
+    required this.threadId,
+    required this.otherUid,
+    required this.lastMessage,
+    required this.lastSenderId,
+    required this.updatedAt,
+  });
+
+  factory ChatThreadSummary.fromDoc(String id, Map<String, dynamic> data, String myUid) {
+    final parts = id.split('_');
+    final otherUid = parts.firstWhere((p) => p != myUid, orElse: () => parts.first);
+    return ChatThreadSummary(
+      threadId: id,
+      otherUid: otherUid,
+      lastMessage: data['lastMessage'] ?? '',
+      lastSenderId: data['lastSenderId'] ?? '',
+      updatedAt: (data['updatedAt'] is Timestamp) ? (data['updatedAt'] as Timestamp).toDate() : DateTime.now(),
+    );
+  }
+}

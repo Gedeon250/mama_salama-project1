@@ -91,6 +91,12 @@ class DashboardScreen extends StatelessWidget {
           const _CareTeamCard(),
           const SizedBox(height: AppSpacing.md),
 
+          // Any active conversation, whether or not an admin has formally
+          // assigned a CHW yet — a CHW can message a mother just by
+          // claiming her help request, so this is the only reliable place
+          // she'll see that a message is waiting.
+          const _MessagesSection(),
+
           // Upcoming appointment
           const SectionHeader(title: 'Upcoming Appointment'),
           const SizedBox(height: 12),
@@ -337,6 +343,87 @@ class _WaterIntakeCard extends StatelessWidget {
   }
 }
 
+class _MessagesSection extends StatelessWidget {
+  const _MessagesSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final mother = context.watch<SessionProvider>().currentUser!;
+    final firestore = FirestoreService();
+
+    return StreamBuilder<List<ChatThreadSummary>>(
+      stream: firestore.watchMyThreads(mother.uid),
+      builder: (context, snapshot) {
+        final threads = snapshot.data ?? [];
+        if (threads.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SectionHeader(title: 'Messages'),
+            const SizedBox(height: 12),
+            ...threads.map((t) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: FutureBuilder<AppUser?>(
+                    future: firestore.getUserById(t.otherUid),
+                    builder: (context, userSnap) {
+                      final other = userSnap.data;
+                      final unread = t.lastSenderId != mother.uid;
+                      return BentoCard(
+                        color: unread ? AppColors.errorContainer : null,
+                        onTap: other == null
+                            ? null
+                            : () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => ChatView(
+                                      currentUserId: mother.uid,
+                                      currentUserName: mother.name,
+                                      otherUserId: other.uid,
+                                      otherUserName: other.name,
+                                      appBarTitle: 'Chat with ${other.name}',
+                                    ),
+                                  ),
+                                ),
+                        child: Row(
+                          children: [
+                            const CircleAvatar(backgroundColor: AppColors.onTertiaryContainer, child: Icon(Icons.volunteer_activism, color: AppColors.primary)),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(other?.name ?? 'Health Worker', style: const TextStyle(fontWeight: FontWeight.w700)),
+                                      if (unread) ...[
+                                        const SizedBox(width: 6),
+                                        const Icon(Icons.circle, size: 8, color: AppColors.error),
+                                      ],
+                                    ],
+                                  ),
+                                  Text(
+                                    t.lastMessage,
+                                    style: TextStyle(fontSize: 12, color: AppColors.secondary, fontWeight: unread ? FontWeight.w700 : FontWeight.w400),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                )),
+            const SizedBox(height: AppSpacing.md),
+          ],
+        );
+      },
+    );
+  }
+}
+
 class _UpcomingAppointmentCard extends StatelessWidget {
   const _UpcomingAppointmentCard();
 
@@ -404,12 +491,13 @@ class _CareTeamCard extends StatefulWidget {
 class _CareTeamCardState extends State<_CareTeamCard> {
   final _firestore = FirestoreService();
   final _messageController = TextEditingController();
-  bool _sending = false;
 
-  Future<void> _sendHelpRequest(AppUser mother) async {
+  void _sendHelpRequest(AppUser mother) {
     if (_messageController.text.trim().isEmpty) return;
-    setState(() => _sending = true);
-    await _firestore.createHelpRequest(HelpRequest(
+    // Don't await: the write future only resolves after a server
+    // round-trip, which would leave this stuck on "Sending..." forever
+    // while offline. The write queues locally and syncs once reconnected.
+    _firestore.createHelpRequest(HelpRequest(
       id: '',
       motherId: mother.uid,
       motherName: mother.name,
@@ -418,7 +506,6 @@ class _CareTeamCardState extends State<_CareTeamCard> {
       createdAt: DateTime.now(),
     ));
     _messageController.clear();
-    setState(() => _sending = false);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Sent to the admin dashboard — a health worker will follow up.')),
@@ -440,34 +527,72 @@ class _CareTeamCardState extends State<_CareTeamCard> {
               future: _firestore.getUserById(mother!.assignedChwId!),
               builder: (context, snapshot) {
                 final chw = snapshot.data;
-                return Row(
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const CircleAvatar(backgroundColor: AppColors.onTertiaryContainer, child: Icon(Icons.volunteer_activism, color: AppColors.primary)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(chw?.name ?? 'Your Health Worker', style: const TextStyle(fontWeight: FontWeight.w700)),
-                          const Text('Your assigned health worker', style: TextStyle(fontSize: 12, color: AppColors.secondary)),
-                        ],
-                      ),
-                    ),
-                    if (chw != null)
-                      OutlinedButton.icon(
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => ChatView(
-                              currentUserId: mother.uid,
-                              currentUserName: mother.name,
-                              otherUserId: chw.uid,
-                              otherUserName: chw.name,
-                              appBarTitle: 'Chat with ${chw.name}',
-                            ),
+                    Row(
+                      children: [
+                        const CircleAvatar(backgroundColor: AppColors.onTertiaryContainer, child: Icon(Icons.volunteer_activism, color: AppColors.primary)),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(chw?.name ?? 'Your Health Worker', style: const TextStyle(fontWeight: FontWeight.w700)),
+                              const Text('Your assigned health worker', style: TextStyle(fontSize: 12, color: AppColors.secondary)),
+                            ],
                           ),
                         ),
-                        icon: const Icon(Icons.chat_bubble_outline, size: 16),
-                        label: const Text('Message'),
+                        if (chw != null)
+                          OutlinedButton.icon(
+                            onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => ChatView(
+                                  currentUserId: mother.uid,
+                                  currentUserName: mother.name,
+                                  otherUserId: chw.uid,
+                                  otherUserName: chw.name,
+                                  appBarTitle: 'Chat with ${chw.name}',
+                                ),
+                              ),
+                            ),
+                            icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                            label: const Text('Message'),
+                          ),
+                      ],
+                    ),
+                    if (chw != null)
+                      StreamBuilder<ChatThreadSummary?>(
+                        stream: _firestore.watchThreadSummary(_firestore.threadIdFor(mother.uid, chw.uid), mother.uid),
+                        builder: (context, threadSnap) {
+                          final thread = threadSnap.data;
+                          if (thread == null || thread.lastMessage.isEmpty) return const SizedBox.shrink();
+                          final unread = thread.lastSenderId != mother.uid;
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 10),
+                            child: Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: unread ? AppColors.errorContainer : AppColors.surfaceContainer,
+                                borderRadius: BorderRadius.circular(AppRadius.md),
+                              ),
+                              child: Row(
+                                children: [
+                                  if (unread) const Icon(Icons.circle, size: 8, color: AppColors.error),
+                                  if (unread) const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      unread ? '${chw.name}: ${thread.lastMessage}' : 'You: ${thread.lastMessage}',
+                                      style: TextStyle(fontSize: 12, fontWeight: unread ? FontWeight.w700 : FontWeight.w400, color: AppColors.onSurface),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
                       ),
                   ],
                 );
@@ -496,9 +621,9 @@ class _CareTeamCardState extends State<_CareTeamCard> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: (_sending || mother == null) ? null : () => _sendHelpRequest(mother),
+              onPressed: mother == null ? null : () => _sendHelpRequest(mother),
               icon: const Icon(Icons.send, size: 16),
-              label: Text(_sending ? 'Sending...' : 'Request Help'),
+              label: const Text('Request Help'),
             ),
           ),
         ],

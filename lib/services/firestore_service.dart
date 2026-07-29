@@ -278,10 +278,31 @@ class FirestoreService {
       'lastMessage': text,
       'lastSenderId': senderId,
       'updatedAt': FieldValue.serverTimestamp(),
+      'participants': threadId.split('_'),
     }, SetOptions(merge: true));
     await threadRef.collection('messages').add(
           ChatMessage(id: '', senderId: senderId, senderName: senderName, text: text, sentAt: DateTime.now()).toDoc(),
         );
+  }
+
+  /// A single thread's summary (last message + who sent it) — cheaper than
+  /// watchMessages when a screen only needs to show an unread indicator.
+  Stream<ChatThreadSummary?> watchThreadSummary(String threadId, String myUid) {
+    return _db.collection('chatThreads').doc(threadId).snapshots().map((doc) {
+      if (!doc.exists) return null;
+      return ChatThreadSummary.fromDoc(doc.id, doc.data()!, myUid);
+    });
+  }
+
+  /// Every chat thread [uid] is a participant in, newest first — used to
+  /// show "you have a new message" indicators without opening each thread.
+  Stream<List<ChatThreadSummary>> watchMyThreads(String uid) {
+    return _db
+        .collection('chatThreads')
+        .where('participants', arrayContains: uid)
+        .orderBy('updatedAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => ChatThreadSummary.fromDoc(d.id, d.data(), uid)).toList());
   }
 
   // ----- Education content -----

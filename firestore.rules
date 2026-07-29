@@ -132,7 +132,15 @@ service cloud.firestore {
       function isParticipant() {
         return request.auth.uid in threadId.split('_');
       }
-      allow read, write: if signedIn() && isParticipant();
+      // Reads (including the list query behind watchMyThreads) are gated
+      // on the `participants` field rather than isParticipant(): Firestore
+      // only allows a list/collection query when the rule checks the same
+      // field the query itself filters on, not just the document ID.
+      allow read: if signedIn() && request.auth.uid in resource.data.participants;
+      // Writes always target one already-known threadId (create or
+      // merge-update from sendMessage), so the doc-ID-based check is fine
+      // even before the document — and its `participants` field — exists.
+      allow write: if signedIn() && isParticipant();
 
       match /messages/{messageId} {
         allow read: if signedIn() && isParticipant();

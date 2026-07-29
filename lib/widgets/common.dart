@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../theme/app_theme.dart';
 
 /// Shared top app bar matching the Stitch header pattern: avatar + brand
@@ -203,6 +204,52 @@ class EmptyHint extends StatelessWidget {
             Text(text, style: const TextStyle(color: AppColors.secondary)),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Thin banner shown at the top of a role shell whenever there's no network
+/// connection. Firestore keeps working offline (reads from cache, writes
+/// queue locally and sync once back online) — this is just honesty about
+/// that state, not a blocker.
+class ConnectivityBanner extends StatefulWidget {
+  const ConnectivityBanner({super.key});
+
+  @override
+  State<ConnectivityBanner> createState() => _ConnectivityBannerState();
+}
+
+class _ConnectivityBannerState extends State<ConnectivityBanner> {
+  bool _offline = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Connectivity().checkConnectivity().then(_onResult);
+    Connectivity().onConnectivityChanged.listen(_onResult);
+  }
+
+  void _onResult(List<ConnectivityResult> results) {
+    final offline = results.every((r) => r == ConnectivityResult.none);
+    if (mounted && offline != _offline) setState(() => _offline = offline);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_offline) return const SizedBox.shrink();
+    return Container(
+      width: double.infinity,
+      color: AppColors.error,
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: AppSpacing.edgeMargin),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.cloud_off, color: Colors.white, size: 14),
+          SizedBox(width: 6),
+          Text("You're offline — changes will sync when you're back online",
+              style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+        ],
       ),
     );
   }

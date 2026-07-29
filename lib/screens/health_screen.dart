@@ -307,9 +307,13 @@ class HealthScreen extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () async {
-                      final navigator = Navigator.of(ctx);
-                      await firestore.updatePregnancyProfile(
+                    onPressed: () {
+                      // Don't await: Firestore's write future only resolves
+                      // after a server round-trip, so awaiting it would hang
+                      // the sheet open indefinitely while offline. The local
+                      // cache (and this screen's stream) updates immediately
+                      // regardless, and the write queues until back online.
+                      firestore.updatePregnancyProfile(
                         uid,
                         PregnancyProfile(
                           pregnancyWeek: int.tryParse(weekController.text.trim()) ?? current.pregnancyWeek,
@@ -319,7 +323,7 @@ class HealthScreen extends StatelessWidget {
                           babySizeComparison: babySizeController.text.trim().isEmpty ? current.babySizeComparison : babySizeController.text.trim(),
                         ),
                       );
-                      navigator.pop();
+                      Navigator.of(ctx).pop();
                     },
                     child: const Text('Save'),
                   ),

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart' as intl;
 import '../../providers/session_provider.dart';
 import '../../models/user_models.dart';
+import '../../services/chat_alert_service.dart';
 import '../../services/firestore_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common.dart';
@@ -18,6 +19,20 @@ class AdminShell extends StatefulWidget {
 class _AdminShellState extends State<AdminShell> {
   int _index = 0;
   final _firestore = FirestoreService();
+  ChatAlertService? _chatAlerts;
+
+  @override
+  void initState() {
+    super.initState();
+    final me = context.read<SessionProvider>().currentUser!;
+    _chatAlerts = ChatAlertService(firestore: _firestore, myUid: me.uid)..start();
+  }
+
+  @override
+  void dispose() {
+    _chatAlerts?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,13 +43,20 @@ class _AdminShellState extends State<AdminShell> {
         title: const Text('Admin Dashboard'),
         actions: [IconButton(onPressed: session.signOut, icon: const Icon(Icons.logout))],
       ),
-      body: IndexedStack(
-        index: _index,
+      body: Column(
         children: [
-          _DashboardTab(firestore: _firestore),
-          _HealthWorkersTab(firestore: _firestore, admin: session.currentUser!),
-          _MothersTab(firestore: _firestore),
-          _LearnTab(firestore: _firestore),
+          const ConnectivityBanner(),
+          Expanded(
+            child: IndexedStack(
+              index: _index,
+              children: [
+                _DashboardTab(firestore: _firestore),
+                _HealthWorkersTab(firestore: _firestore, admin: session.currentUser!),
+                _MothersTab(firestore: _firestore),
+                _LearnTab(firestore: _firestore),
+              ],
+            ),
+          ),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -422,7 +444,6 @@ class _AddLessonSheetState extends State<_AddLessonSheet> {
   final _descriptionController = TextEditingController();
   final _mediaUrlController = TextEditingController();
   EducationFormat _format = EducationFormat.article;
-  bool _saving = false;
 
   @override
   void dispose() {
@@ -434,9 +455,11 @@ class _AddLessonSheetState extends State<_AddLessonSheet> {
     super.dispose();
   }
 
-  Future<void> _save() async {
-    setState(() => _saving = true);
-    await widget.firestore.addEducationContent(EducationContent(
+  // Don't await the write future — it only resolves after a server
+  // round-trip, which would leave this stuck on "Saving..." forever while
+  // offline. The write queues locally and syncs once reconnected.
+  void _save() {
+    widget.firestore.addEducationContent(EducationContent(
       id: '',
       title: _titleController.text.trim(),
       category: _categoryController.text.trim(),
@@ -445,7 +468,7 @@ class _AddLessonSheetState extends State<_AddLessonSheet> {
       description: _descriptionController.text.trim(),
       mediaUrl: _mediaUrlController.text.trim().isEmpty ? null : _mediaUrlController.text.trim(),
     ));
-    if (mounted) Navigator.of(context).pop();
+    Navigator.of(context).pop();
   }
 
   @override
@@ -484,8 +507,8 @@ class _AddLessonSheetState extends State<_AddLessonSheet> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _saving ? null : _save,
-                child: Text(_saving ? 'Saving...' : 'Save Lesson'),
+                onPressed: _save,
+                child: const Text('Save Lesson'),
               ),
             ),
           ],

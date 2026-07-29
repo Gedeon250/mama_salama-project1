@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart' as intl;
 import '../../providers/session_provider.dart';
 import '../../models/user_models.dart';
+import '../../services/chat_alert_service.dart';
 import '../../services/firestore_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common.dart';
@@ -19,6 +20,20 @@ class ChwShell extends StatefulWidget {
 class _ChwShellState extends State<ChwShell> {
   int _index = 0;
   final _firestore = FirestoreService();
+  ChatAlertService? _chatAlerts;
+
+  @override
+  void initState() {
+    super.initState();
+    final me = context.read<SessionProvider>().currentUser!;
+    _chatAlerts = ChatAlertService(firestore: _firestore, myUid: me.uid)..start();
+  }
+
+  @override
+  void dispose() {
+    _chatAlerts?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,11 +52,18 @@ class _ChwShellState extends State<ChwShell> {
           IconButton(onPressed: session.signOut, icon: const Icon(Icons.logout)),
         ],
       ),
-      body: IndexedStack(
-        index: _index,
+      body: Column(
         children: [
-          _RequestsTab(me: me, firestore: _firestore),
-          _MyMothersTab(me: me, firestore: _firestore),
+          const ConnectivityBanner(),
+          Expanded(
+            child: IndexedStack(
+              index: _index,
+              children: [
+                _RequestsTab(me: me, firestore: _firestore),
+                _MyMothersTab(me: me, firestore: _firestore),
+              ],
+            ),
+          ),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -206,47 +228,78 @@ class _MyMothersTab extends StatelessWidget {
             ),
           );
         }
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(AppSpacing.edgeMargin, AppSpacing.sm, AppSpacing.edgeMargin, AppSpacing.xl),
-          children: mothers
-              .map((m) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: BentoCard(
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => ChatView(
-                            currentUserId: me.uid,
-                            currentUserName: me.name,
-                            otherUserId: m.uid,
-                            otherUserName: m.name,
-                            appBarTitle: 'Chat with ${m.name}',
-                          ),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          const CircleAvatar(backgroundColor: AppColors.secondaryContainer, child: Icon(Icons.pregnant_woman, color: AppColors.primary)),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(m.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                                Text(m.phone ?? m.email, style: const TextStyle(fontSize: 12, color: AppColors.secondary)),
-                              ],
+        return StreamBuilder<List<ChatThreadSummary>>(
+          stream: firestore.watchMyThreads(me.uid),
+          builder: (context, threadsSnap) {
+            final threads = threadsSnap.data ?? [];
+            ChatThreadSummary? threadFor(String motherUid) {
+              for (final t in threads) {
+                if (t.otherUid == motherUid) return t;
+              }
+              return null;
+            }
+
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.edgeMargin, AppSpacing.sm, AppSpacing.edgeMargin, AppSpacing.xl),
+              children: mothers
+                  .map((m) {
+                    final thread = threadFor(m.uid);
+                    final unread = thread != null && thread.lastSenderId != me.uid;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: BentoCard(
+                        color: unread ? AppColors.errorContainer : null,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => ChatView(
+                              currentUserId: me.uid,
+                              currentUserName: me.name,
+                              otherUserId: m.uid,
+                              otherUserName: m.name,
+                              appBarTitle: 'Chat with ${m.name}',
                             ),
                           ),
-                          IconButton(
-                            onPressed: () => _showAddRecordSheet(context, firestore, m),
-                            icon: const Icon(Icons.note_add_outlined, color: AppColors.primary),
-                            tooltip: 'Add record',
-                          ),
-                          const Icon(Icons.chat_bubble_outline, color: AppColors.primary),
-                        ],
+                        ),
+                        child: Row(
+                          children: [
+                            const CircleAvatar(backgroundColor: AppColors.secondaryContainer, child: Icon(Icons.pregnant_woman, color: AppColors.primary)),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(m.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                                      if (unread) ...[
+                                        const SizedBox(width: 6),
+                                        const Icon(Icons.circle, size: 8, color: AppColors.error),
+                                      ],
+                                    ],
+                                  ),
+                                  Text(
+                                    thread != null && thread.lastMessage.isNotEmpty ? thread.lastMessage : (m.phone ?? m.email),
+                                    style: TextStyle(fontSize: 12, color: AppColors.secondary, fontWeight: unread ? FontWeight.w700 : FontWeight.w400),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () => _showAddRecordSheet(context, firestore, m),
+                              icon: const Icon(Icons.note_add_outlined, color: AppColors.primary),
+                              tooltip: 'Add record',
+                            ),
+                            const Icon(Icons.chat_bubble_outline, color: AppColors.primary),
+                          ],
+                        ),
                       ),
-                    ),
-                  ))
-              .toList(),
+                    );
+                  })
+                  .toList(),
+            );
+          },
         );
       },
     );
@@ -293,7 +346,6 @@ class _AddRecordSheetState extends State<_AddRecordSheet> {
   bool _vaccineCompleted = false;
 
   DateTime _date = DateTime.now();
-  bool _saving = false;
 
   @override
   void dispose() {
@@ -307,11 +359,15 @@ class _AddRecordSheetState extends State<_AddRecordSheet> {
     super.dispose();
   }
 
-  Future<void> _save() async {
-    setState(() => _saving = true);
+  // Don't await the write futures — they only resolve after a server
+  // round-trip, which would leave this sheet stuck on "Saving..." forever
+  // while offline. The local cache updates immediately (so the mother's
+  // screen and this CHW's own view both reflect it right away) and the
+  // write queues until back online.
+  void _save() {
     switch (_type) {
       case _RecordType.visitNote:
-        await widget.firestore.addMedicalRecord(MedicalRecord(
+        widget.firestore.addMedicalRecord(MedicalRecord(
           id: '',
           motherId: widget.forMother.uid,
           title: _titleController.text.trim().isEmpty ? 'Visit note' : _titleController.text.trim(),
@@ -321,7 +377,7 @@ class _AddRecordSheetState extends State<_AddRecordSheet> {
         ));
         break;
       case _RecordType.labResult:
-        await widget.firestore.addLabResult(LabResult(
+        widget.firestore.addLabResult(LabResult(
           id: '',
           motherId: widget.forMother.uid,
           testName: _testNameController.text.trim(),
@@ -332,7 +388,7 @@ class _AddRecordSheetState extends State<_AddRecordSheet> {
         ));
         break;
       case _RecordType.vaccine:
-        await widget.firestore.addVaccineRecord(VaccineRecord(
+        widget.firestore.addVaccineRecord(VaccineRecord(
           id: '',
           motherId: widget.forMother.uid,
           name: _vaccineNameController.text.trim(),
@@ -342,7 +398,7 @@ class _AddRecordSheetState extends State<_AddRecordSheet> {
         ));
         break;
     }
-    if (mounted) Navigator.of(context).pop();
+    Navigator.of(context).pop();
   }
 
   @override
@@ -427,8 +483,8 @@ class _AddRecordSheetState extends State<_AddRecordSheet> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _saving ? null : _save,
-                child: Text(_saving ? 'Saving...' : 'Save Record'),
+                onPressed: _save,
+                child: const Text('Save Record'),
               ),
             ),
           ],

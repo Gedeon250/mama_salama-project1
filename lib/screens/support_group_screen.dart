@@ -18,7 +18,6 @@ class _SupportGroupScreenState extends State<SupportGroupScreen> {
   String _filter = 'All Posts';
   final _composeController = TextEditingController();
   final _firestore = FirestoreService();
-  bool _posting = false;
 
   @override
   void dispose() {
@@ -26,10 +25,12 @@ class _SupportGroupScreenState extends State<SupportGroupScreen> {
     super.dispose();
   }
 
-  Future<void> _post(AppUser me) async {
+  void _post(AppUser me) {
     if (_composeController.text.trim().isEmpty) return;
-    setState(() => _posting = true);
-    await _firestore.addCommunityPost(
+    // Don't await: the write future only resolves after a server
+    // round-trip, which would leave the compose box stuck forever while
+    // offline. The write queues locally and syncs once reconnected.
+    _firestore.addCommunityPost(
       widget.group.id,
       CommunityPost(
         id: '',
@@ -42,7 +43,7 @@ class _SupportGroupScreenState extends State<SupportGroupScreen> {
       ),
     );
     _composeController.clear();
-    if (mounted) setState(() => _posting = false);
+    setState(() {});
   }
 
   @override
@@ -149,7 +150,7 @@ class _SupportGroupScreenState extends State<SupportGroupScreen> {
                   const SizedBox(width: 8),
                   IconButton.filled(
                     style: IconButton.styleFrom(backgroundColor: AppColors.primary),
-                    onPressed: _posting ? null : () => _post(me),
+                    onPressed: () => _post(me),
                     icon: const Icon(Icons.send, color: Colors.white),
                   ),
                 ],
