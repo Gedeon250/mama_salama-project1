@@ -69,25 +69,34 @@ class FirestoreService {
 
   /// Most recent [limit] days of vitals, oldest first — used for the
   /// weight/BP/blood-sugar trend sparklines on the Health screen.
+  ///
+  /// Orders by a plain `date` field rather than the document ID: regular
+  /// fields get automatic indexes in both directions, but `__name__`
+  /// (document ID) only gets one for ascending — descending, or
+  /// limitToLast (which Firestore runs as a descending query internally
+  /// and reverses client-side), needs an explicit index override either way.
   Stream<List<DailyVitals>> watchRecentVitals(String uid, {int limit = 14}) {
     return _vitals(uid)
-        .orderBy(FieldPath.documentId, descending: true)
+        .orderBy('date', descending: true)
         .limit(limit)
         .snapshots()
         .map((snap) => snap.docs.map((d) => DailyVitals.fromDoc(d.id, d.data())).toList().reversed.toList());
   }
 
+  Map<String, dynamic> _todayStamp() => {'date': Timestamp.fromDate(DateTime.now())};
+
   Future<void> logKick(String uid) {
-    return _vitals(uid).doc(_dateId(DateTime.now())).set({'kickCountToday': FieldValue.increment(1)}, SetOptions(merge: true));
+    return _vitals(uid).doc(_dateId(DateTime.now())).set({'kickCountToday': FieldValue.increment(1), ..._todayStamp()}, SetOptions(merge: true));
   }
 
   Future<void> resetKickCounter(String uid) {
-    return _vitals(uid).doc(_dateId(DateTime.now())).set({'kickCountToday': 0}, SetOptions(merge: true));
+    return _vitals(uid).doc(_dateId(DateTime.now())).set({'kickCountToday': 0, ..._todayStamp()}, SetOptions(merge: true));
   }
 
   Future<void> logContraction(String uid, Duration length) {
     return _vitals(uid).doc(_dateId(DateTime.now())).set({
       'contractionsTodaySeconds': FieldValue.arrayUnion([length.inSeconds]),
+      ..._todayStamp(),
     }, SetOptions(merge: true));
   }
 
@@ -95,11 +104,12 @@ class FirestoreService {
     return _vitals(uid).doc(_dateId(DateTime.now())).set({
       'waterCupsToday': FieldValue.increment(1),
       'waterGoalCups': goalCups,
+      ..._todayStamp(),
     }, SetOptions(merge: true));
   }
 
   Future<void> setMood(String uid, String mood) {
-    return _vitals(uid).doc(_dateId(DateTime.now())).set({'moodToday': mood}, SetOptions(merge: true));
+    return _vitals(uid).doc(_dateId(DateTime.now())).set({'moodToday': mood, ..._todayStamp()}, SetOptions(merge: true));
   }
 
   // ----- Help requests (SOS + general "I need something") -----
