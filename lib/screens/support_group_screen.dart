@@ -57,7 +57,7 @@ class _SupportGroupScreenState extends State<SupportGroupScreen> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(AppSpacing.edgeMargin, AppSpacing.sm, AppSpacing.edgeMargin, AppSpacing.sm),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.surfaceContainerLowest,
               border: Border(bottom: BorderSide(color: AppColors.outlineVariant)),
             ),
@@ -70,13 +70,13 @@ class _SupportGroupScreenState extends State<SupportGroupScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(children: [
+                          Row(children: [
                             Icon(Icons.groups, color: AppColors.primary, size: 16),
-                            SizedBox(width: 4),
+                            const SizedBox(width: 4),
                             Text('Community Group', style: TextStyle(fontSize: 11, color: AppColors.secondary)),
                           ]),
                           const SizedBox(height: 2),
-                          Text(widget.group.description, style: const TextStyle(fontSize: 12, color: AppColors.secondary)),
+                          Text(widget.group.description, style: TextStyle(fontSize: 12, color: AppColors.secondary)),
                         ],
                       ),
                     ),
@@ -190,13 +190,13 @@ class _PostCard extends StatelessWidget {
           const SizedBox(height: 8),
           Row(
             children: [
-              const Icon(Icons.favorite_border, size: 16, color: AppColors.secondary),
+              Icon(Icons.favorite_border, size: 16, color: AppColors.secondary),
               const SizedBox(width: 4),
-              Text('${post.likes}', style: const TextStyle(fontSize: 12, color: AppColors.secondary)),
+              Text('${post.likes}', style: TextStyle(fontSize: 12, color: AppColors.secondary)),
               const SizedBox(width: 16),
-              const Icon(Icons.chat_bubble_outline, size: 16, color: AppColors.secondary),
+              Icon(Icons.chat_bubble_outline, size: 16, color: AppColors.secondary),
               const SizedBox(width: 4),
-              Text('${post.comments}', style: const TextStyle(fontSize: 12, color: AppColors.secondary)),
+              Text('${post.comments}', style: TextStyle(fontSize: 12, color: AppColors.secondary)),
             ],
           ),
         ],

@@ -37,11 +37,11 @@ class _LoginScreenState extends State<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 32),
-                const Icon(Icons.pregnant_woman, color: AppColors.primary, size: 56),
+                Icon(Icons.pregnant_woman, color: AppColors.primary, size: 56),
                 const SizedBox(height: 12),
                 Text('MamaSalama', textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineLarge),
                 const SizedBox(height: 4),
-                const Text('Sign in to continue', textAlign: TextAlign.center, style: TextStyle(color: AppColors.secondary)),
+                Text('Sign in to continue', textAlign: TextAlign.center, style: TextStyle(color: AppColors.secondary)),
                 const SizedBox(height: 32),
                 TextField(
                   controller: _emailController,

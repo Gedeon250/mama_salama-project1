@@ -8,6 +8,7 @@ import 'l10n/generated/app_localizations.dart';
 import 'providers/app_data.dart';
 import 'providers/locale_provider.dart';
 import 'providers/session_provider.dart';
+import 'providers/theme_provider.dart';
 import 'services/auth_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/auth/auth_gate.dart';
@@ -34,13 +35,16 @@ class MamaSalamaApp extends StatelessWidget {
         // Real Firebase-backed session: auth + role + live requests/chat.
         ChangeNotifierProvider(create: (_) => SessionProvider(AuthService())),
         ChangeNotifierProvider(create: (_) => LocaleProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeModeProvider()),
       ],
-      child: Consumer<LocaleProvider>(
-        builder: (context, localeProvider, _) {
+      child: Consumer2<LocaleProvider, ThemeModeProvider>(
+        builder: (context, localeProvider, themeProvider, _) {
           return MaterialApp(
             title: 'MamaSalama',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light,
+            darkTheme: AppTheme.dark,
+            themeMode: themeProvider.themeMode,
             locale: localeProvider.locale,
             supportedLocales: LocaleProvider.supportedLocales,
             localizationsDelegates: const [

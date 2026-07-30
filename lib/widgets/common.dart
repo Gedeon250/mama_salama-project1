@@ -27,11 +27,11 @@ class MamaAppBar extends StatelessWidget implements PreferredSizeWidget {
           if (showBack)
             IconButton(
               onPressed: () => Navigator.of(context).maybePop(),
-              icon: const Icon(Icons.arrow_back, color: AppColors.primary),
+              icon: Icon(Icons.arrow_back, color: AppColors.primary),
               padding: EdgeInsets.zero,
             )
           else
-            const CircleAvatar(
+            CircleAvatar(
               radius: 18,
               backgroundColor: AppColors.secondaryContainer,
               child: Icon(Icons.pregnant_woman, color: AppColors.primary, size: 20),
@@ -50,7 +50,7 @@ class MamaAppBar extends StatelessWidget implements PreferredSizeWidget {
         ...?actions,
         IconButton(
           onPressed: () {},
-          icon: const Icon(Icons.notifications_outlined, color: AppColors.primary),
+          icon: Icon(Icons.notifications_outlined, color: AppColors.primary),
         ),
         const SizedBox(width: 4),
       ],
@@ -161,15 +161,15 @@ class PillChip extends StatelessWidget {
 
 class ProgressTrack extends StatelessWidget {
   final double value; // 0..1
-  final Color trackColor;
-  final Color fillColor;
+  final Color? trackColor;
+  final Color? fillColor;
   final double height;
 
   const ProgressTrack({
     super.key,
     required this.value,
-    this.trackColor = AppColors.surfaceContainer,
-    this.fillColor = AppColors.primary,
+    this.trackColor,
+    this.fillColor,
     this.height = 8,
   });
 
@@ -180,8 +180,8 @@ class ProgressTrack extends StatelessWidget {
       child: LinearProgressIndicator(
         value: value.clamp(0, 1),
         minHeight: height,
-        backgroundColor: trackColor,
-        valueColor: AlwaysStoppedAnimation(fillColor),
+        backgroundColor: trackColor ?? AppColors.surfaceContainer,
+        valueColor: AlwaysStoppedAnimation(fillColor ?? AppColors.primary),
       ),
     );
   }
@@ -201,7 +201,7 @@ class EmptyHint extends StatelessWidget {
           children: [
             Icon(icon, color: AppColors.outline, size: 32),
             const SizedBox(height: 8),
-            Text(text, style: const TextStyle(color: AppColors.secondary)),
+            Text(text, style: TextStyle(color: AppColors.secondary)),
           ],
         ),
       ),

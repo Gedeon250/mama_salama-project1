@@ -31,7 +31,7 @@ class LabResultsScreen extends StatelessWidget {
               AppSpacing.edgeMargin, AppSpacing.sm, AppSpacing.edgeMargin, AppSpacing.xl,
             ),
             children: [
-              const Text('Your most recent laboratory results, with reference ranges for context.',
+              Text('Your most recent laboratory results, with reference ranges for context.',
                   style: TextStyle(color: AppColors.secondary)),
               const SizedBox(height: AppSpacing.md),
               if (results.isEmpty)
@@ -60,8 +60,8 @@ class LabResultsScreen extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(r.testName, style: const TextStyle(fontWeight: FontWeight.w700)),
-                                  Text('Reference: ${r.referenceRange}', style: const TextStyle(fontSize: 12, color: AppColors.secondary)),
-                                  Text(intl.DateFormat('MMM d, yyyy').format(r.date), style: const TextStyle(fontSize: 11, color: AppColors.outline)),
+                                  Text('Reference: ${r.referenceRange}', style: TextStyle(fontSize: 12, color: AppColors.secondary)),
+                                  Text(intl.DateFormat('MMM d, yyyy').format(r.date), style: TextStyle(fontSize: 11, color: AppColors.outline)),
                                 ],
                               ),
                             ),
@@ -77,13 +77,13 @@ class LabResultsScreen extends StatelessWidget {
                       ),
                     )),
               const SizedBox(height: AppSpacing.sm),
-              const BentoCard(
+              BentoCard(
                 color: AppColors.onTertiaryContainer,
                 child: Row(
                   children: [
                     Icon(Icons.info_outline, color: AppColors.primary),
-                    SizedBox(width: 12),
-                    Expanded(
+                    const SizedBox(width: 12),
+                    const Expanded(
                       child: Text(
                         'Flagged results are not a diagnosis by themselves — discuss any out-of-range value with your CHW or doctor at your next visit.',
                         style: TextStyle(fontSize: 12),

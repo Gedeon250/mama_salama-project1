@@ -77,7 +77,7 @@ class _NutritionResourcesScreenState extends State<NutritionResourcesScreen> {
                             ),
                             const SizedBox(width: 12),
                             Expanded(child: Text(r['title'] as String, style: const TextStyle(fontWeight: FontWeight.w600))),
-                            Text(r['type'] as String, style: const TextStyle(fontSize: 11, color: AppColors.secondary)),
+                            Text(r['type'] as String, style: TextStyle(fontSize: 11, color: AppColors.secondary)),
                           ],
                         ),
                       ),

@@ -61,14 +61,14 @@ class _ChatViewState extends State<ChatView> {
               stream: _firestore.watchMessages(_threadId),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  return Center(child: Text('Could not load messages: ${snapshot.error}', style: const TextStyle(color: AppColors.secondary)));
+                  return Center(child: Text('Could not load messages: ${snapshot.error}', style: TextStyle(color: AppColors.secondary)));
                 }
                 if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }
                 final messages = snapshot.data!;
                 if (messages.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Text('No messages yet — say hello.', style: TextStyle(color: AppColors.secondary)),
                   );
                 }

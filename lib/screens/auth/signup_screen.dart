@@ -73,13 +73,13 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               if (_role == UserRole.chw) ...[
                 const SizedBox(height: 10),
-                const BentoCard(
+                BentoCard(
                   color: AppColors.onTertiaryContainer,
                   child: Row(
                     children: [
                       Icon(Icons.info_outline, color: AppColors.primary, size: 18),
-                      SizedBox(width: 8),
-                      Expanded(
+                      const SizedBox(width: 8),
+                      const Expanded(
                         child: Text(
                           'Health Worker accounts should be reviewed by an Admin before being trusted with '
                           'mother assignments in production — this MVP creates the account immediately.',
