@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:fl_chart/fl_chart.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/session_provider.dart';
 import '../../models/user_models.dart';
 import '../../services/chat_alert_service.dart';
@@ -168,9 +169,6 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-/// Total pregnancies / high-risk count / appointment completion rate / avg
-/// SOS response time, plus a simple bar chart of live request status —
-/// pulled together from streams the rest of the dashboard already uses.
 class _AnalyticsSection extends StatelessWidget {
   final FirestoreService firestore;
   final List<HelpRequest> requests;
@@ -380,61 +378,323 @@ class _HealthWorkersTab extends StatelessWidget {
   final AppUser admin;
   const _HealthWorkersTab({required this.firestore, required this.admin});
 
+  Future<void> _promptNote({
+    required BuildContext context,
+    required String title,
+    required String confirmLabel,
+    required Future<void> Function(String note) onConfirm,
+  }) async {
+    final controller = TextEditingController();
+    final note = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: 'Note to applicant'),
+          maxLines: 3,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
+            child: Text(confirmLabel),
+          ),
+        ],
+      ),
+    );
+    if (note == null) return;
+    try {
+      await onConfirm(note);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$confirmLabel done.')));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+      }
+    }
+  }
+
+  Future<void> _approve(BuildContext context, AppUser applicant) async {
+    try {
+      await firestore.approveChwApplication(applicant.uid);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${applicant.name} is now a Health Worker.')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<AppUser>>(
-      stream: firestore.watchUsersByRole(UserRole.chw),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Center(child: Padding(padding: const EdgeInsets.all(24), child: EmptyHint(icon: Icons.error_outline, text: 'Could not load health workers: ${snapshot.error}')));
-        }
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-        final chws = snapshot.data!;
-        if (chws.isEmpty) {
-          return const Center(child: Padding(padding: EdgeInsets.all(24), child: EmptyHint(text: 'No health workers registered yet.')));
-        }
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(AppSpacing.edgeMargin, AppSpacing.sm, AppSpacing.edgeMargin, AppSpacing.xl),
-          children: chws
-              .map((c) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: BentoCard(
-                      child: Row(
-                        children: [
-                          UserAvatar(photoUrl: c.photoUrl, backgroundColor: AppColors.onTertiaryContainer, icon: Icons.volunteer_activism),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(c.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                                Text(c.phone ?? c.email, style: TextStyle(fontSize: 12, color: AppColors.secondary)),
-                              ],
+      stream: firestore.watchChwApplications(),
+      builder: (context, appSnap) {
+        return StreamBuilder<List<AppUser>>(
+          stream: firestore.watchUsersByRole(UserRole.chw),
+          builder: (context, chwSnap) {
+            if (appSnap.hasError || chwSnap.hasError) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: EmptyHint(
+                    icon: Icons.error_outline,
+                    text: 'Could not load health workers: ${appSnap.error ?? chwSnap.error}',
+                  ),
+                ),
+              );
+            }
+            if (!chwSnap.hasData) return const Center(child: CircularProgressIndicator());
+
+            final applicants = (appSnap.data ?? [])
+                .where((u) => u.chwApplication != null && u.chwApplication!.status != ChwApplicationStatus.rejected)
+                .toList()
+              ..sort((a, b) {
+                final aAt = a.chwApplication?.submittedAt ?? DateTime(0);
+                final bAt = b.chwApplication?.submittedAt ?? DateTime(0);
+                return bAt.compareTo(aAt);
+              });
+            final awaitingForm = (appSnap.data ?? []).where((u) => u.chwApplication == null).toList();
+            final chws = chwSnap.data!;
+
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.edgeMargin, AppSpacing.sm, AppSpacing.edgeMargin, AppSpacing.xl),
+              children: [
+                SectionHeader(
+                  title: 'Applications',
+                  subtitle: applicants.isEmpty && awaitingForm.isEmpty
+                      ? 'No pending applications'
+                      : '${applicants.length} to review${awaitingForm.isEmpty ? '' : ', ${awaitingForm.length} still filling the form'}',
+                ),
+                const SizedBox(height: 12),
+                if (applicants.isEmpty && awaitingForm.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 8),
+                    child: EmptyHint(text: 'New Health Worker sign-ups will show up here for approval.'),
+                  ),
+                ...applicants.map((a) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _ApplicationCard(
+                        applicant: a,
+                        onApprove: () => _approve(context, a),
+                        onNeedsInfo: () => _promptNote(
+                          context: context,
+                          title: 'Request more information',
+                          confirmLabel: 'Send',
+                          onConfirm: (note) => firestore.requestMoreChwInfo(a.uid, note),
+                        ),
+                        onReject: () => _promptNote(
+                          context: context,
+                          title: 'Reject application',
+                          confirmLabel: 'Reject',
+                          onConfirm: (note) => firestore.rejectChwApplication(a.uid, note.isEmpty ? null : note),
+                        ),
+                      ),
+                    )),
+                ...awaitingForm.map((a) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: BentoCard(
+                        child: Row(
+                          children: [
+                            UserAvatar(
+                              photoUrl: a.photoUrl,
+                              backgroundColor: AppColors.secondaryContainer,
+                              icon: Icons.hourglass_empty,
                             ),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => ChatView(
-                                  currentUserId: admin.uid,
-                                  currentUserName: admin.name,
-                                  otherUserId: c.uid,
-                                  otherUserName: c.name,
-                                  appBarTitle: 'Chat with ${c.name}',
-                                ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(a.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                                  Text(a.email, style: TextStyle(fontSize: 12, color: AppColors.secondary)),
+                                  Text('Has not submitted an application yet', style: TextStyle(fontSize: 12, color: AppColors.secondary)),
+                                ],
                               ),
                             ),
-                            icon: const Icon(Icons.chat_bubble_outline, size: 16),
-                            label: const Text('Message'),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ))
-              .toList(),
+                    )),
+                const SizedBox(height: 16),
+                SectionHeader(title: 'Active Health Workers', subtitle: '${chws.length} approved'),
+                const SizedBox(height: 12),
+                if (chws.isEmpty)
+                  const EmptyHint(text: 'No approved health workers yet.')
+                else
+                  ...chws.map((c) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: BentoCard(
+                          child: Row(
+                            children: [
+                              UserAvatar(
+                                photoUrl: c.photoUrl,
+                                backgroundColor: AppColors.onTertiaryContainer,
+                                icon: Icons.volunteer_activism,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(c.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                                    Text(c.phone ?? c.email, style: TextStyle(fontSize: 12, color: AppColors.secondary)),
+                                  ],
+                                ),
+                              ),
+                              OutlinedButton.icon(
+                                onPressed: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => ChatView(
+                                      currentUserId: admin.uid,
+                                      currentUserName: admin.name,
+                                      otherUserId: c.uid,
+                                      otherUserName: c.name,
+                                      appBarTitle: 'Chat with ${c.name}',
+                                    ),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                                label: const Text('Message'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )),
+              ],
+            );
+          },
         );
       },
     );
+  }
+}
+
+class _ApplicationCard extends StatelessWidget {
+  final AppUser applicant;
+  final VoidCallback onApprove;
+  final VoidCallback onNeedsInfo;
+  final VoidCallback onReject;
+
+  const _ApplicationCard({
+    required this.applicant,
+    required this.onApprove,
+    required this.onNeedsInfo,
+    required this.onReject,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final app = applicant.chwApplication!;
+    final needsInfo = app.status == ChwApplicationStatus.needsMoreInfo;
+
+    return BentoCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              UserAvatar(
+                photoUrl: applicant.photoUrl,
+                backgroundColor: AppColors.onTertiaryContainer,
+                icon: Icons.volunteer_activism,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(applicant.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    Text(applicant.email, style: TextStyle(fontSize: 12, color: AppColors.secondary)),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: needsInfo ? AppColors.tertiaryContainer : AppColors.secondaryContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  needsInfo ? 'Needs info' : 'Pending',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text('Expertise: ${app.fieldOfExpertise}', style: const TextStyle(fontSize: 13)),
+          Text('Experience: ${app.yearsOfExperience} years', style: const TextStyle(fontSize: 13)),
+          if (app.currentEmployment != null && app.currentEmployment!.isNotEmpty)
+            Text('Employment: ${app.currentEmployment}', style: const TextStyle(fontSize: 13)),
+          if (app.adminNote != null && app.adminNote!.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text('Note: ${app.adminNote}', style: TextStyle(fontSize: 12, color: AppColors.secondary)),
+          ],
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => _openUrl(context, app.cvUrl),
+                icon: const Icon(Icons.description_outlined, size: 16),
+                label: const Text('CV'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _openUrl(context, app.proofOfExpertiseUrl),
+                icon: const Icon(Icons.verified_outlined, size: 16),
+                label: const Text('Proof'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: onApprove,
+                  child: const Text('Approve'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: onNeedsInfo,
+                  child: const Text('More info'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: onReject,
+                  style: OutlinedButton.styleFrom(foregroundColor: AppColors.error),
+                  child: const Text('Reject'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openUrl(BuildContext context, String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid document link.')));
+      return;
+    }
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open document.')));
+    }
   }
 }
 

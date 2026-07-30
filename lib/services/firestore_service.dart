@@ -83,18 +83,17 @@ class FirestoreService {
   }
 
   Future<void> requestMoreChwInfo(String uid, String note) {
-    return _users.doc(uid).set({
-      'chwApplication': {'status': ChwApplicationStatus.needsMoreInfo.name, 'adminNote': note},
-    }, SetOptions(merge: true));
+    return _users.doc(uid).update({
+      'chwApplication.status': ChwApplicationStatus.needsMoreInfo.name,
+      'chwApplication.adminNote': note,
+    });
   }
 
   Future<void> rejectChwApplication(String uid, String? note) {
-    return _users.doc(uid).set({
-      'chwApplication': {
-        'status': ChwApplicationStatus.rejected.name,
-        if (note != null) 'adminNote': note,
-      },
-    }, SetOptions(merge: true));
+    return _users.doc(uid).update({
+      'chwApplication.status': ChwApplicationStatus.rejected.name,
+      if (note != null) 'chwApplication.adminNote': note,
+    });
   }
 
   /// Count of mothers currently flagged `pregnancyProfile.isHighRisk` — feeds

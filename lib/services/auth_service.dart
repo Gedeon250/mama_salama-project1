@@ -5,13 +5,13 @@ import '../models/user_models.dart';
 
 class NoAccountForGoogleUserException implements Exception {}
 
-/// Thrown by [AuthService.signIn] when Firebase Auth accepts the
-/// credentials but there's no matching `users/{uid}` doc — e.g. an account
-/// created directly in the Firebase console instead of through this app's
-/// own signup flow. Without this check the user would silently get stuck
-/// on AuthGate's `SessionStatus.loading` spinner forever, since
-/// `watchAppUser` never emits a non-null user for a doc that doesn't
-/// exist — see SessionProvider._onAuthChanged.
+/// Thrown by [AuthService.signIn] (and used by
+/// [SessionProvider] on cold-start restore) when Firebase Auth accepts
+/// the credentials / has a persisted session but there's no matching
+/// `users/{uid}` doc — e.g. an account created in the Firebase console
+/// instead of through this app's signup flow. SessionProvider signs the
+/// user out and surfaces a friendly error rather than leaving AuthGate
+/// on the loading spinner forever.
 class NoProfileFoundException implements Exception {}
 
 class AuthService {
