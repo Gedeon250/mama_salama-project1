@@ -12,7 +12,10 @@ class SignupScreen extends StatefulWidget {
   State<SignupScreen> createState() => _SignupScreenState();
 }
 
+final _emailFormat = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+
 class _SignupScreenState extends State<SignupScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -21,6 +24,7 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _submitting = false;
 
   Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _submitting = true);
     final session = context.read<SessionProvider>();
     final ok = await session.register(
@@ -30,10 +34,24 @@ class _SignupScreenState extends State<SignupScreen> {
       role: _role,
       phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
     );
+    if (!mounted) return;
     setState(() => _submitting = false);
-    if (!ok && mounted) {
+    if (!ok) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(session.error ?? 'Registration failed')));
-    } else if (mounted) {
+    } else {
+      Navigator.of(context).pop();
+    }
+  }
+
+  Future<void> _continueWithGoogle() async {
+    setState(() => _submitting = true);
+    final session = context.read<SessionProvider>();
+    final ok = await session.signUpWithGoogle(_role);
+    if (!mounted) return;
+    setState(() => _submitting = false);
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(session.error ?? 'Google sign-in failed')));
+    } else {
       Navigator.of(context).pop();
     }
   }
@@ -45,7 +63,9 @@ class _SignupScreenState extends State<SignupScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpacing.edgeMargin),
-          child: Column(
+          child: Form(
+            key: _formKey,
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Text('I am registering as a...', style: TextStyle(fontWeight: FontWeight.w700)),
@@ -91,24 +111,38 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
               ],
               const SizedBox(height: 20),
-              TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Full name')),
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(labelText: 'Full name'),
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter your name' : null,
+              ),
               const SizedBox(height: 12),
-              TextField(
+              TextFormField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 decoration: const InputDecoration(labelText: 'Email'),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Enter your email';
+                  if (!_emailFormat.hasMatch(v.trim())) return 'Enter a valid email address';
+                  return null;
+                },
               ),
               const SizedBox(height: 12),
-              TextField(
+              TextFormField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
                 decoration: const InputDecoration(labelText: 'Phone (optional)'),
               ),
               const SizedBox(height: 12),
-              TextField(
+              TextFormField(
                 controller: _passwordController,
                 obscureText: true,
                 decoration: const InputDecoration(labelText: 'Password'),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Enter a password';
+                  if (v.length < 6) return 'At least 6 characters';
+                  return null;
+                },
               ),
               const SizedBox(height: 20),
               ElevatedButton(
@@ -117,7 +151,25 @@ class _SignupScreenState extends State<SignupScreen> {
                     ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                     : const Text('Create Account'),
               ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  const Expanded(child: Divider()),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text('OR', style: TextStyle(color: AppColors.secondary, fontSize: 12)),
+                  ),
+                  const Expanded(child: Divider()),
+                ],
+              ),
+              const SizedBox(height: 20),
+              OutlinedButton.icon(
+                onPressed: _submitting ? null : _continueWithGoogle,
+                icon: const Icon(Icons.account_circle_outlined),
+                label: const Text('Continue with Google'),
+              ),
             ],
+            ),
           ),
         ),
       ),

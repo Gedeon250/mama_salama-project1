@@ -22,6 +22,12 @@ class SessionProvider extends ChangeNotifier {
   AppUser? currentUser;
   String? error;
 
+  /// True for a brand-new account (any provider) that hasn't completed the
+  /// post-signup verification step yet — see AppUser.emailConfirmed.
+  /// AuthGate shows a "verify your email" screen instead of the normal role
+  /// shell while this is true.
+  bool get needsEmailVerification => status == SessionStatus.signedIn && currentUser?.emailConfirmed == false;
+
   void _onAuthChanged(fbUser) {
     _userSub?.cancel();
     if (fbUser == null) {
@@ -67,7 +73,49 @@ class SessionProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> signInWithGoogle() async {
+    error = null;
+    try {
+      await _authService.signInWithGoogle();
+      return true;
+    } catch (e) {
+      error = _friendlyError(e);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> signUpWithGoogle(UserRole role) async {
+    error = null;
+    try {
+      await _authService.signUpWithGoogle(role);
+      return true;
+    } catch (e) {
+      error = _friendlyError(e);
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<void> signOut() => _authService.signOut();
+
+  Future<void> resendVerificationEmail() => _authService.resendVerificationEmail();
+
+  /// Call after the user says they've clicked the link in their inbox.
+  /// For a password account this is a real check — it reloads the Firebase
+  /// user and only marks them confirmed if `emailVerified` actually flipped
+  /// true. For a Google account there's no equivalent real signal (Google
+  /// marks `emailVerified` true itself, from the start), so this just
+  /// records the user's self-reported confirmation. Returns false if a
+  /// password account still hasn't verified.
+  Future<bool> refreshEmailVerified() async {
+    if (_authService.isPasswordProvider) {
+      await _authService.reloadCurrentUser();
+      if (!_authService.isEmailVerified) return false;
+    }
+    await _authService.markEmailConfirmed();
+    return true;
+  }
 
   Future<bool> changePassword({required String currentPassword, required String newPassword}) async {
     error = null;
@@ -82,7 +130,11 @@ class SessionProvider extends ChangeNotifier {
   }
 
   String _friendlyError(Object e) {
+    if (e is NoAccountForGoogleUserException) {
+      return 'No account found for that Google sign-in. Please use "Register" first.';
+    }
     final msg = e.toString();
+    if (msg.contains('google-sign-in-cancelled')) return "Google sign-in was cancelled.";
     if (msg.contains('email-already-in-use')) return 'That email is already registered.';
     if (msg.contains('weak-password')) return 'Please choose a stronger password (6+ characters).';
     if (msg.contains('invalid-email')) return 'That email address looks invalid.';
