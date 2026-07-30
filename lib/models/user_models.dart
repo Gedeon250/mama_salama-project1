@@ -27,6 +27,11 @@ class AppUser {
   final UserRole role;
   final String? assignedChwId; // set on mothers once a CHW is assigned
   final String? phone;
+  // False only for brand-new accounts pending the post-signup verification
+  // gate (see SessionProvider.needsEmailVerification); missing on any doc
+  // written before this field existed, so those default to already-confirmed
+  // rather than retroactively locking existing users out.
+  final bool emailConfirmed;
 
   AppUser({
     required this.uid,
@@ -35,6 +40,7 @@ class AppUser {
     required this.role,
     this.assignedChwId,
     this.phone,
+    this.emailConfirmed = true,
   });
 
   factory AppUser.fromDoc(String uid, Map<String, dynamic> data) {
@@ -45,6 +51,7 @@ class AppUser {
       role: roleFromString(data['role'] as String?),
       assignedChwId: data['assignedChwId'] as String?,
       phone: data['phone'] as String?,
+      emailConfirmed: data['emailConfirmed'] as bool? ?? true,
     );
   }
 
@@ -54,6 +61,7 @@ class AppUser {
         'role': roleToString(role),
         if (assignedChwId != null) 'assignedChwId': assignedChwId,
         if (phone != null) 'phone': phone,
+        'emailConfirmed': emailConfirmed,
       };
 }
 

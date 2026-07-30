@@ -7,6 +7,7 @@ import '../chw/chw_shell.dart';
 import '../admin/admin_shell.dart';
 import '../hospital/hospital_shell.dart';
 import 'login_screen.dart';
+import 'verify_email_screen.dart';
 
 /// Top-level router: watches SessionProvider and shows the login flow,
 /// a loading spinner, or the shell that matches the signed-in user's role.
@@ -23,6 +24,7 @@ class AuthGate extends StatelessWidget {
       case SessionStatus.loading:
         return const Scaffold(body: Center(child: CircularProgressIndicator()));
       case SessionStatus.signedIn:
+        if (session.needsEmailVerification) return const VerifyEmailScreen();
         final user = session.currentUser!;
         switch (user.role) {
           case UserRole.mother:
