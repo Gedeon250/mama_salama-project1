@@ -69,6 +69,18 @@ class SessionProvider extends ChangeNotifier {
 
   Future<void> signOut() => _authService.signOut();
 
+  Future<bool> changePassword({required String currentPassword, required String newPassword}) async {
+    error = null;
+    try {
+      await _authService.changePassword(currentPassword: currentPassword, newPassword: newPassword);
+      return true;
+    } catch (e) {
+      error = _friendlyError(e);
+      notifyListeners();
+      return false;
+    }
+  }
+
   String _friendlyError(Object e) {
     final msg = e.toString();
     if (msg.contains('email-already-in-use')) return 'That email is already registered.';

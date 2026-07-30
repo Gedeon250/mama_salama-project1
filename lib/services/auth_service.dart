@@ -54,4 +54,14 @@ class AuthService {
   Future<void> signOut() => _auth.signOut();
 
   Future<void> sendPasswordReset(String email) => _auth.sendPasswordResetEmail(email: email);
+
+  /// Firebase requires a recent sign-in before allowing a password change,
+  /// so we reauthenticate with the current password first rather than
+  /// asking the user to sign out and back in.
+  Future<void> changePassword({required String currentPassword, required String newPassword}) async {
+    final user = _auth.currentUser!;
+    final credential = fb.EmailAuthProvider.credential(email: user.email!, password: currentPassword);
+    await user.reauthenticateWithCredential(credential);
+    await user.updatePassword(newPassword);
+  }
 }

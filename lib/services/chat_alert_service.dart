@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../models/user_models.dart';
 import 'firestore_service.dart';
+import 'notification_prefs.dart';
 
 /// Best-effort in-app alert for new chat messages: pops a local
 /// notification when a message arrives in one of the current user's
@@ -37,6 +38,7 @@ class ChatAlertService {
         // Skip the very first snapshot per thread so we don't re-notify for
         // messages that already existed before this listener started.
         if (_first || !isNewer || t.lastSenderId == myUid) continue;
+        if (!await NotificationPrefs.isEnabled()) continue;
 
         final sender = await firestore.getUserById(t.lastSenderId);
         await _plugin.show(
