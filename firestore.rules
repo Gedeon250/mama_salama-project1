@@ -158,6 +158,7 @@ service cloud.firestore {
         allow create: if signedIn() &&
           request.resource.data.authorId == request.auth.uid &&
           request.resource.data.isExpertAnswer == (myRole() == 'chw');
+        allow delete: if signedIn() && resource.data.authorId == request.auth.uid;
       }
     }
 

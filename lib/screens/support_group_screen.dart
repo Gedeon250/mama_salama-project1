@@ -129,7 +129,29 @@ class _SupportGroupScreenState extends State<SupportGroupScreen> {
                   padding: const EdgeInsets.fromLTRB(AppSpacing.edgeMargin, AppSpacing.sm, AppSpacing.edgeMargin, AppSpacing.md),
                   children: posts.map((p) => Padding(
                         padding: const EdgeInsets.only(bottom: 12),
-                        child: _PostCard(post: p),
+                        child: _PostCard(
+                          post: p,
+                          canDelete: p.authorId == me.uid,
+                          onDelete: () async {
+                            final confirmed = await showDialog<bool>(
+                              context: context,
+                              builder: (dialogContext) => AlertDialog(
+                                title: const Text('Delete post?'),
+                                content: const Text('This cannot be undone.'),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Cancel')),
+                                  TextButton(
+                                    onPressed: () => Navigator.of(dialogContext).pop(true),
+                                    child: Text('Delete', style: TextStyle(color: AppColors.error)),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirmed == true) {
+                              await _firestore.deleteCommunityPost(widget.group.id, p.id);
+                            }
+                          },
+                        ),
                       )).toList(),
                 );
               },
@@ -165,7 +187,9 @@ class _SupportGroupScreenState extends State<SupportGroupScreen> {
 
 class _PostCard extends StatelessWidget {
   final CommunityPost post;
-  const _PostCard({required this.post});
+  final bool canDelete;
+  final VoidCallback onDelete;
+  const _PostCard({required this.post, required this.canDelete, required this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -183,6 +207,14 @@ class _PostCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(child: Text(post.author, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13))),
               PillChip(label: post.tag),
+              if (canDelete)
+                IconButton(
+                  onPressed: onDelete,
+                  icon: Icon(Icons.delete_outline, size: 18, color: AppColors.secondary),
+                  visualDensity: VisualDensity.compact,
+                  constraints: const BoxConstraints(),
+                  padding: const EdgeInsets.only(left: 8),
+                ),
             ],
           ),
           const SizedBox(height: 8),

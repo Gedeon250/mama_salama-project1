@@ -369,4 +369,10 @@ class FirestoreService {
   Future<void> addCommunityPost(String groupId, CommunityPost post) {
     return _communityGroups.doc(groupId).collection('posts').add(post.toDoc());
   }
+
+  /// Only the post's author may call this — enforced by firestore.rules, not
+  /// just the UI hiding the button.
+  Future<void> deleteCommunityPost(String groupId, String postId) {
+    return _communityGroups.doc(groupId).collection('posts').doc(postId).delete();
+  }
 }
