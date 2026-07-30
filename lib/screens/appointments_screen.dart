@@ -9,12 +9,15 @@ import '../widgets/common.dart';
 import 'emergency_sos_screen.dart';
 
 class AppointmentsScreen extends StatelessWidget {
-  const AppointmentsScreen({super.key});
+  // Test-only hook: lets widget tests inject a FirestoreService backed by a
+  // fake FirebaseFirestore instead of the real one. Never set in app code.
+  final FirestoreService? firestoreOverride;
+  const AppointmentsScreen({super.key, this.firestoreOverride});
 
   @override
   Widget build(BuildContext context) {
     final mother = context.watch<SessionProvider>().currentUser!;
-    final firestore = FirestoreService();
+    final firestore = firestoreOverride ?? FirestoreService();
 
     return Scaffold(
       appBar: const MamaAppBar(),
@@ -62,11 +65,11 @@ class AppointmentsScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.videocam_outlined, color: AppColors.primary, size: 28),
+                          Icon(Icons.videocam_outlined, color: AppColors.primary, size: 28),
                           const SizedBox(height: 8),
                           const Text('Telemedicine', style: TextStyle(fontWeight: FontWeight.w700)),
                           const SizedBox(height: 2),
-                          const Text('Instant video call with a specialist', style: TextStyle(fontSize: 12, color: AppColors.secondary)),
+                          Text('Instant video call with a specialist', style: TextStyle(fontSize: 12, color: AppColors.secondary)),
                           const SizedBox(height: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -281,8 +284,8 @@ class _AppointmentTile extends StatelessWidget {
               children: [
                 Text(appointment.title, style: const TextStyle(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 2),
-                Text(appointment.provider, style: const TextStyle(color: AppColors.secondary, fontSize: 13)),
-                Text(appointment.location, style: const TextStyle(color: AppColors.secondary, fontSize: 13)),
+                Text(appointment.provider, style: TextStyle(color: AppColors.secondary, fontSize: 13)),
+                Text(appointment.location, style: TextStyle(color: AppColors.secondary, fontSize: 13)),
                 const SizedBox(height: 6),
                 Text(intl.DateFormat('MMM d, yyyy · h:mm a').format(appointment.dateTime),
                     style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
@@ -295,7 +298,7 @@ class _AppointmentTile extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _statusColor().withOpacity(0.12),
+                  color: _statusColor().withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(AppRadius.full),
                 ),
                 child: Text(_statusLabel(), style: TextStyle(color: _statusColor(), fontSize: 11, fontWeight: FontWeight.w700)),
@@ -305,7 +308,7 @@ class _AppointmentTile extends StatelessWidget {
                 TextButton(
                   onPressed: onCancel,
                   style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 0)),
-                  child: const Text('Cancel', style: TextStyle(fontSize: 12, color: AppColors.error)),
+                  child: Text('Cancel', style: TextStyle(fontSize: 12, color: AppColors.error)),
                 ),
               ],
             ],

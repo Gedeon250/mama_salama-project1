@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// The three account types the backend distinguishes. Hospital/clinic
-/// accounts (role 3 in the PRD) are out of scope for this pass — only
-/// Mother, CHW ("Health Worker"/volunteer), and Admin are wired up.
-enum UserRole { mother, chw, admin }
+/// The four PRD account types. Hospital accounts aren't self-serve (same
+/// bootstrap process as admin — create via console, or edit an existing
+/// doc's `role` field).
+enum UserRole { mother, chw, admin, hospital }
 
 UserRole roleFromString(String? value) {
   switch (value) {
@@ -11,6 +11,8 @@ UserRole roleFromString(String? value) {
       return UserRole.chw;
     case 'admin':
       return UserRole.admin;
+    case 'hospital':
+      return UserRole.hospital;
     default:
       return UserRole.mother;
   }
@@ -63,6 +65,7 @@ class PregnancyProfile {
   final String bloodType;
   final List<String> allergies;
   final String babySizeComparison;
+  final bool isHighRisk;
 
   PregnancyProfile({
     required this.pregnancyWeek,
@@ -70,6 +73,7 @@ class PregnancyProfile {
     required this.bloodType,
     required this.allergies,
     required this.babySizeComparison,
+    this.isHighRisk = false,
   });
 
   int get trimester => pregnancyWeek <= 13 ? 1 : (pregnancyWeek <= 26 ? 2 : 3);
@@ -92,6 +96,7 @@ class PregnancyProfile {
       bloodType: map['bloodType'] ?? 'Unknown',
       allergies: (map['allergies'] as List?)?.map((e) => e.toString()).toList() ?? [],
       babySizeComparison: map['babySizeComparison'] ?? 'Poppy seed',
+      isHighRisk: map['isHighRisk'] ?? false,
     );
   }
 
@@ -101,6 +106,7 @@ class PregnancyProfile {
         'bloodType': bloodType,
         'allergies': allergies,
         'babySizeComparison': babySizeComparison,
+        'isHighRisk': isHighRisk,
       };
 }
 
@@ -286,6 +292,7 @@ class Appointment {
   final DateTime dateTime;
   final bool isTelemedicine;
   final AppointmentStatus status;
+  final String? hospitalId;
 
   Appointment({
     required this.id,
@@ -297,6 +304,7 @@ class Appointment {
     required this.dateTime,
     this.isTelemedicine = false,
     this.status = AppointmentStatus.upcoming,
+    this.hospitalId,
   });
 
   factory Appointment.fromDoc(String id, Map<String, dynamic> data) {
@@ -313,6 +321,7 @@ class Appointment {
         (s) => s.name == (data['status'] ?? 'upcoming'),
         orElse: () => AppointmentStatus.upcoming,
       ),
+      hospitalId: data['hospitalId'] as String?,
     );
   }
 
@@ -325,6 +334,7 @@ class Appointment {
         'dateTime': Timestamp.fromDate(dateTime),
         'isTelemedicine': isTelemedicine,
         'status': status.name,
+        if (hospitalId != null) 'hospitalId': hospitalId,
       };
 }
 
@@ -345,6 +355,8 @@ class HelpRequest {
   String? assignedChwId;
   String? assignedChwName;
   final DateTime createdAt;
+  final DateTime? assignedAt;
+  final DateTime? resolvedAt;
 
   HelpRequest({
     required this.id,
@@ -356,6 +368,8 @@ class HelpRequest {
     this.assignedChwId,
     this.assignedChwName,
     required this.createdAt,
+    this.assignedAt,
+    this.resolvedAt,
   });
 
   factory HelpRequest.fromDoc(String id, Map<String, dynamic> data) {
@@ -374,6 +388,8 @@ class HelpRequest {
       createdAt: (data['createdAt'] is Timestamp)
           ? (data['createdAt'] as Timestamp).toDate()
           : DateTime.now(),
+      assignedAt: (data['assignedAt'] is Timestamp) ? (data['assignedAt'] as Timestamp).toDate() : null,
+      resolvedAt: (data['resolvedAt'] is Timestamp) ? (data['resolvedAt'] as Timestamp).toDate() : null,
     );
   }
 
@@ -592,4 +608,56 @@ class ChatThreadSummary {
       updatedAt: (data['updatedAt'] is Timestamp) ? (data['updatedAt'] as Timestamp).toDate() : DateTime.now(),
     );
   }
+}
+
+/// Written when a CHW generates a referral letter (see report_service.dart)
+/// for one of their assigned mothers, addressed to a specific registered
+/// Hospital account — lets that Hospital's shell show a "Referrals" feed.
+class Referral {
+  final String id;
+  final String motherId;
+  final String motherName;
+  final String chwId;
+  final String chwName;
+  final String hospitalId;
+  final String hospitalName;
+  final String reason;
+  final DateTime createdAt;
+
+  Referral({
+    required this.id,
+    required this.motherId,
+    required this.motherName,
+    required this.chwId,
+    required this.chwName,
+    required this.hospitalId,
+    required this.hospitalName,
+    required this.reason,
+    required this.createdAt,
+  });
+
+  factory Referral.fromDoc(String id, Map<String, dynamic> data) {
+    return Referral(
+      id: id,
+      motherId: data['motherId'] ?? '',
+      motherName: data['motherName'] ?? '',
+      chwId: data['chwId'] ?? '',
+      chwName: data['chwName'] ?? '',
+      hospitalId: data['hospitalId'] ?? '',
+      hospitalName: data['hospitalName'] ?? '',
+      reason: data['reason'] ?? '',
+      createdAt: (data['createdAt'] is Timestamp) ? (data['createdAt'] as Timestamp).toDate() : DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toDoc() => {
+        'motherId': motherId,
+        'motherName': motherName,
+        'chwId': chwId,
+        'chwName': chwName,
+        'hospitalId': hospitalId,
+        'hospitalName': hospitalName,
+        'reason': reason,
+        'createdAt': FieldValue.serverTimestamp(),
+      };
 }

@@ -5,6 +5,7 @@ import '../../models/user_models.dart';
 import '../root_shell.dart';
 import '../chw/chw_shell.dart';
 import '../admin/admin_shell.dart';
+import '../hospital/hospital_shell.dart';
 import 'login_screen.dart';
 
 /// Top-level router: watches SessionProvider and shows the login flow,
@@ -30,6 +31,8 @@ class AuthGate extends StatelessWidget {
             return const ChwShell();
           case UserRole.admin:
             return const AdminShell();
+          case UserRole.hospital:
+            return const HospitalShell();
         }
     }
   }

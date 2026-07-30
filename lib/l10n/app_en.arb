@@ -1,0 +1,134 @@
+{
+  "@@locale": "en",
+
+  "helloName": "Hello, {name}!",
+  "@helloName": {
+    "placeholders": { "name": {} }
+  },
+  "healthSnapshotSubtitle": "You're doing great. Here's your health snapshot.",
+  "quickActionsTitle": "Quick Actions",
+  "sosLabel": "SOS",
+  "recordsLabel": "Records",
+  "learnLabel": "Learn",
+  "askAiLabel": "Ask AI",
+  "yourCareTeamTitle": "Your Care Team",
+  "yourAssignedHealthWorker": "Your assigned health worker",
+  "healthWorkerFallbackName": "Health Worker",
+  "messageButton": "Message",
+  "noHealthWorkerAssigned": "You don't have a health worker assigned yet. Send a request below and an admin will connect you with one.",
+  "describeHelpHint": "Describe what you need help with...",
+  "requestHelpButton": "Request Help",
+  "helpRequestSentSnackbar": "Sent to the admin dashboard — a health worker will follow up.",
+  "messagesTitle": "Messages",
+  "currentProgressLabel": "Current Progress",
+  "weekLabel": "Week {week}",
+  "@weekLabel": {
+    "placeholders": { "week": {} }
+  },
+  "trimesterLabel": "Trimester {trimester}",
+  "@trimesterLabel": {
+    "placeholders": { "trimester": {} }
+  },
+  "babySizeIntro": "Baby is the size of a",
+  "conceptionLabel": "Conception",
+  "daysToDueDate": "{days} days to due date",
+  "@daysToDueDate": {
+    "placeholders": { "days": {} }
+  },
+  "upcomingAppointmentTitle": "Upcoming Appointment",
+  "noUpcomingAppointments": "No upcoming appointments booked.",
+  "todaysMedicationTitle": "Today's Medication",
+  "waterIntakeTitle": "Water Intake",
+  "cupsFormat": "{current} / {total} cups",
+  "@cupsFormat": {
+    "placeholders": { "current": {}, "total": {} }
+  },
+  "todaysHealthTipTitle": "Today's Health Tip",
+  "healthTipText": "Eating iron-rich foods like beans and leafy greens alongside vitamin C can help your body absorb more iron.",
+  "aiAssistantTitle": "MamaSalama AI Assistant",
+  "aiAssistantBody": "This is a placeholder for the AI health assistant described in the PRD (pregnancy Q&A, symptom triage, nutrition advice, and Kinyarwanda / English / Swahili / French translation). Wire this up to your chosen LLM provider when the backend is ready.",
+  "gotIt": "Got it",
+  "couldNotLoad": "Could not load: {error}",
+  "@couldNotLoad": {
+    "placeholders": { "error": {} }
+  },
+
+  "yourJourneyTitle": "Your Journey",
+  "weekTrimesterFormat": "Week {week} · Trimester {trimester}",
+  "@weekTrimesterFormat": {
+    "placeholders": { "week": {}, "trimester": {} }
+  },
+  "daysToDueDateBadge": "{days} Days to Due Date",
+  "@daysToDueDateBadge": {
+    "placeholders": { "days": {} }
+  },
+  "trimesterShort1": "T1",
+  "trimesterShort2": "T2",
+  "trimesterShort3": "T3",
+  "babysSizeTitle": "Baby's Size",
+  "weightTitle": "Weight",
+  "noDataYet": "No data yet",
+  "bloodPressureTitle": "Blood Pressure",
+  "mmHgUnit": "mmHg",
+  "bloodSugarTitle": "Blood Sugar",
+  "quickTrackingTitle": "Quick Tracking",
+  "babyKickCounterTitle": "Baby Kick Counter",
+  "kicksLoggedToday": "{count} kicks logged today",
+  "@kicksLoggedToday": {
+    "placeholders": { "count": {} }
+  },
+  "kickButton": "Kick",
+  "contractionTimerTitle": "Contraction Timer",
+  "moodTrackerTitle": "Mood Tracker",
+  "recordsAndCareTitle": "Records & Care",
+  "medicalRecordsTitle": "Medical Records",
+  "medicalRecordsSubtitle": "Visit notes, ultrasounds, delivery history",
+  "labResultsTitle": "Lab Results",
+  "labResultsSubtitle": "Blood work, glucose, and screening results",
+  "vaccinationsTitle": "Vaccinations",
+  "vaccinationsSubtitle": "Mother & baby immunization schedule",
+  "editPregnancyInfoTitle": "Edit Pregnancy Info",
+  "pregnancyWeekLabel": "Pregnancy week",
+  "dueDateLabel": "Due date: {date}",
+  "@dueDateLabel": {
+    "placeholders": { "date": {} }
+  },
+  "bloodTypeLabel": "Blood type",
+  "allergiesLabel": "Allergies (comma-separated)",
+  "babySizeComparisonLabel": "Baby's size comparison",
+  "saveButton": "Save",
+  "healthAppBarTitle": "Health",
+  "resetTooltip": "Reset",
+  "stopButton": "Stop",
+  "startButton": "Start",
+  "moodGreat": "Great",
+  "moodGood": "Good",
+  "moodTired": "Tired",
+  "moodAnxious": "Anxious",
+  "moodLow": "Low",
+  "elapsedFormat": "{minutes}:{seconds} elapsed",
+  "@elapsedFormat": {
+    "placeholders": { "minutes": {}, "seconds": {} }
+  },
+  "loggedTodayFormat": "{count} logged today",
+  "@loggedTodayFormat": {
+    "placeholders": { "count": {} }
+  },
+
+  "emergencySosTitle": "Emergency SOS",
+  "dispatchInProgress": "DISPATCH IN PROGRESS",
+  "tapToCallAmbulance": "TAP TO CALL AMBULANCE",
+  "connectingToDispatch": "Connecting to Emergency Dispatch",
+  "liveStatusTitle": "Live Status",
+  "cancelEmergencyAlert": "Cancel Emergency Alert",
+  "nearbyFacilitiesTitle": "Nearby Facilities",
+  "emergencyContactsTitle": "Emergency Contacts",
+  "emergencyContactsNotice": "{count} contacts will be notified automatically when SOS is triggered. Manage them from your Profile.",
+  "@emergencyContactsNotice": {
+    "placeholders": { "count": {} }
+  },
+  "sosStep1": "Sending your location to the nearest hospital...",
+  "sosStep2": "Notifying your assigned Community Health Worker...",
+  "sosStep3": "Alerting your emergency contacts...",
+  "sosStep4": "Ambulance dispatched — estimated arrival 12 minutes."
+}

@@ -32,7 +32,7 @@ class _VideoLessonScreenState extends State<VideoLessonScreen> {
                   child: Container(
                     width: 72,
                     height: 72,
-                    decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.9), shape: BoxShape.circle),
+                    decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.9), shape: BoxShape.circle),
                     child: Icon(_playing ? Icons.pause : Icons.play_arrow, color: Colors.white, size: 36),
                   ),
                 ),
@@ -44,7 +44,7 @@ class _VideoLessonScreenState extends State<VideoLessonScreen> {
                     value: _progress,
                     minHeight: 4,
                     backgroundColor: Colors.white24,
-                    valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+                    valueColor: AlwaysStoppedAnimation(AppColors.primary),
                   ),
                 ),
               ],
@@ -57,15 +57,15 @@ class _VideoLessonScreenState extends State<VideoLessonScreen> {
               children: [
                 Text('Nutrition in Your Second Trimester', style: Theme.of(context).textTheme.headlineSmall),
                 const SizedBox(height: 6),
-                const Row(
+                Row(
                   children: [
-                    PillChip(label: 'Nutrition'),
-                    SizedBox(width: 8),
+                    const PillChip(label: 'Nutrition'),
+                    const SizedBox(width: 8),
                     Text('6 min · Video', style: TextStyle(fontSize: 12, color: AppColors.secondary)),
                   ],
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'A nutritionist walks through balanced meals for weeks 13–26, covering iron-rich foods, '
                   'calcium sources, and safe portion sizes for common Rwandan staples.',
                   style: TextStyle(color: AppColors.onSurfaceVariant),

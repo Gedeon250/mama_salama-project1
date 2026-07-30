@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/user_models.dart';
+import '../providers/locale_provider.dart';
 import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
@@ -15,7 +17,6 @@ class EducationCenterScreen extends StatefulWidget {
 
 class _EducationCenterScreenState extends State<EducationCenterScreen> {
   String _query = '';
-  String _language = 'EN';
 
   IconData _formatIcon(EducationFormat f) {
     switch (f) {
@@ -50,17 +51,21 @@ class _EducationCenterScreenState extends State<EducationCenterScreen> {
               AppSpacing.edgeMargin, AppSpacing.sm, AppSpacing.edgeMargin, AppSpacing.xl,
             ),
             children: [
-          Row(
-            children: [
-              const Icon(Icons.language, size: 18, color: AppColors.secondary),
-              const SizedBox(width: 6),
-              Text('EN | RW | SW | FR', style: const TextStyle(fontSize: 12, color: AppColors.secondary)),
-              const Spacer(),
-              TextButton(
-                onPressed: () => setState(() => _language = _language == 'EN' ? 'RW' : 'EN'),
-                child: Text('Change ($_language)'),
-              ),
-            ],
+          Consumer<LocaleProvider>(
+            builder: (context, localeProvider, _) {
+              return Row(
+                children: [
+                  Icon(Icons.language, size: 18, color: AppColors.secondary),
+                  const SizedBox(width: 6),
+                  Text('EN | RW | SW | FR', style: TextStyle(fontSize: 12, color: AppColors.secondary)),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: localeProvider.cycleLocale,
+                    child: Text('Change (${localeProvider.locale.languageCode.toUpperCase()})'),
+                  ),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 8),
           TextField(
@@ -91,7 +96,7 @@ class _EducationCenterScreenState extends State<EducationCenterScreen> {
                 Container(
                   width: 56,
                   height: 56,
-                  decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                  decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
                   child: const Icon(Icons.play_arrow, color: Colors.white, size: 28),
                 ),
                 Positioned(
@@ -145,13 +150,13 @@ class _EducationCenterScreenState extends State<EducationCenterScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(item.title, style: const TextStyle(fontWeight: FontWeight.w700)),
-                            Text(item.description, style: const TextStyle(fontSize: 12, color: AppColors.secondary), maxLines: 2, overflow: TextOverflow.ellipsis),
+                            Text(item.description, style: TextStyle(fontSize: 12, color: AppColors.secondary), maxLines: 2, overflow: TextOverflow.ellipsis),
                             const SizedBox(height: 4),
                             Row(
                               children: [
                                 PillChip(label: item.category),
                                 const SizedBox(width: 6),
-                                Text(item.durationOrLength, style: const TextStyle(fontSize: 11, color: AppColors.outline)),
+                                Text(item.durationOrLength, style: TextStyle(fontSize: 11, color: AppColors.outline)),
                               ],
                             ),
                           ],

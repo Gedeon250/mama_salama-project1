@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart' as intl;
+import 'package:fl_chart/fl_chart.dart';
 import '../../providers/session_provider.dart';
 import '../../models/user_models.dart';
 import '../../services/chat_alert_service.dart';
@@ -114,17 +115,18 @@ class _DashboardTab extends StatelessWidget {
                     color: AppColors.errorContainer,
                     child: Row(
                       children: [
-                        const Icon(Icons.emergency, color: AppColors.error),
+                        Icon(Icons.emergency, color: AppColors.error),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text('$sosActive active SOS alert${sosActive == 1 ? '' : 's'} need attention',
-                              style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.onErrorContainer)),
+                              style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.onErrorContainer)),
                         ),
                       ],
                     ),
                   ),
                 ],
                 const SizedBox(height: AppSpacing.md),
+                _AnalyticsSection(firestore: firestore, requests: requests),
                 const SectionHeader(title: 'Live Requests Feed'),
                 const SizedBox(height: 12),
                 if (requests.isEmpty)
@@ -157,9 +159,148 @@ class _StatCard extends StatelessWidget {
           children: [
             Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
             const SizedBox(height: 2),
-            Text(label, style: const TextStyle(fontSize: 12, color: AppColors.secondary)),
+            Text(label, style: TextStyle(fontSize: 12, color: AppColors.secondary)),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Total pregnancies / high-risk count / appointment completion rate / avg
+/// SOS response time, plus a simple bar chart of live request status —
+/// pulled together from streams the rest of the dashboard already uses.
+class _AnalyticsSection extends StatelessWidget {
+  final FirestoreService firestore;
+  final List<HelpRequest> requests;
+  const _AnalyticsSection({required this.firestore, required this.requests});
+
+  String _formatDuration(Duration d) {
+    if (d.inMinutes < 60) return '${d.inMinutes}m';
+    return '${d.inHours}h ${d.inMinutes % 60}m';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final resolvedSos = requests
+        .where((r) => r.type == RequestType.sos && r.status == RequestStatus.resolved && r.resolvedAt != null)
+        .toList();
+    Duration? avgResponse;
+    if (resolvedSos.isNotEmpty) {
+      final totalSeconds = resolvedSos.fold<int>(0, (sum, r) => sum + r.resolvedAt!.difference(r.createdAt).inSeconds);
+      avgResponse = Duration(seconds: totalSeconds ~/ resolvedSos.length);
+    }
+
+    return StreamBuilder<List<AppUser>>(
+      stream: firestore.watchUsersByRole(UserRole.mother),
+      builder: (context, motherSnap) {
+        final totalMothers = motherSnap.data?.length ?? 0;
+        return StreamBuilder<int>(
+          stream: firestore.watchHighRiskMotherCount(),
+          builder: (context, riskSnap) {
+            final highRisk = riskSnap.data ?? 0;
+            return StreamBuilder<List<Appointment>>(
+              stream: firestore.watchAllAppointments(),
+              builder: (context, apptSnap) {
+                final appts = apptSnap.data ?? [];
+                final completed = appts.where((a) => a.status == AppointmentStatus.completed).length;
+                final finished = appts.where((a) => a.status != AppointmentStatus.upcoming).length;
+                final completionRate = finished == 0 ? null : completed / finished;
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SectionHeader(title: 'Analytics'),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          _StatCard(label: 'Pregnancies', value: '$totalMothers', color: AppColors.primary),
+                          const SizedBox(width: 10),
+                          _StatCard(label: 'High-Risk', value: '$highRisk', color: AppColors.error),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          _StatCard(
+                            label: 'Appt. Completion',
+                            value: completionRate == null ? '—' : '${(completionRate * 100).round()}%',
+                            color: AppColors.tertiary,
+                          ),
+                          const SizedBox(width: 10),
+                          _StatCard(
+                            label: 'Avg SOS Response',
+                            value: avgResponse == null ? '—' : _formatDuration(avgResponse),
+                            color: AppColors.primary,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      BentoCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Requests by Status', style: TextStyle(fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 12),
+                            SizedBox(height: 140, child: _RequestStatusChart(requests: requests)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _RequestStatusChart extends StatelessWidget {
+  final List<HelpRequest> requests;
+  const _RequestStatusChart({required this.requests});
+
+  @override
+  Widget build(BuildContext context) {
+    final pending = requests.where((r) => r.status == RequestStatus.pending).length.toDouble();
+    final assigned = requests.where((r) => r.status == RequestStatus.assigned).length.toDouble();
+    final resolved = requests.where((r) => r.status == RequestStatus.resolved).length.toDouble();
+    final maxY = [pending, assigned, resolved, 1.0].reduce((a, b) => a > b ? a : b);
+    const labels = ['Pending', 'Assigned', 'Resolved'];
+
+    return BarChart(
+      BarChartData(
+        maxY: maxY + 1,
+        barTouchData: BarTouchData(enabled: false),
+        titlesData: FlTitlesData(
+          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                final i = value.toInt();
+                if (i < 0 || i >= labels.length) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(labels[i], style: TextStyle(fontSize: 11, color: AppColors.secondary)),
+                );
+              },
+            ),
+          ),
+        ),
+        gridData: const FlGridData(show: false),
+        borderData: FlBorderData(show: false),
+        barGroups: [
+          BarChartGroupData(x: 0, barRods: [BarChartRodData(toY: pending, color: AppColors.error, width: 28, borderRadius: BorderRadius.circular(4))]),
+          BarChartGroupData(x: 1, barRods: [BarChartRodData(toY: assigned, color: AppColors.tertiary, width: 28, borderRadius: BorderRadius.circular(4))]),
+          BarChartGroupData(x: 2, barRods: [BarChartRodData(toY: resolved, color: AppColors.primary, width: 28, borderRadius: BorderRadius.circular(4))]),
+        ],
       ),
     );
   }
@@ -185,7 +326,7 @@ class _AdminRequestCard extends StatelessWidget {
               Icon(isSos ? Icons.emergency : Icons.help_outline, color: isSos ? AppColors.error : AppColors.primary),
               const SizedBox(width: 8),
               Expanded(child: Text(request.motherName, style: const TextStyle(fontWeight: FontWeight.w700))),
-              Text(intl.DateFormat('MMM d, h:mm a').format(request.createdAt), style: const TextStyle(fontSize: 11, color: AppColors.secondary)),
+              Text(intl.DateFormat('MMM d, h:mm a').format(request.createdAt), style: TextStyle(fontSize: 11, color: AppColors.secondary)),
             ],
           ),
           const SizedBox(height: 6),
@@ -197,7 +338,7 @@ class _AdminRequestCard extends StatelessWidget {
               const SizedBox(width: 8),
               if (request.assignedChwName != null)
                 Expanded(
-                  child: Text('→ ${request.assignedChwName}', style: const TextStyle(fontSize: 12, color: AppColors.secondary), overflow: TextOverflow.ellipsis),
+                  child: Text('→ ${request.assignedChwName}', style: TextStyle(fontSize: 12, color: AppColors.secondary), overflow: TextOverflow.ellipsis),
                 )
               else
                 const Spacer(),
@@ -259,14 +400,14 @@ class _HealthWorkersTab extends StatelessWidget {
                     child: BentoCard(
                       child: Row(
                         children: [
-                          const CircleAvatar(backgroundColor: AppColors.onTertiaryContainer, child: Icon(Icons.volunteer_activism, color: AppColors.primary)),
+                          CircleAvatar(backgroundColor: AppColors.onTertiaryContainer, child: Icon(Icons.volunteer_activism, color: AppColors.primary)),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(c.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                                Text(c.phone ?? c.email, style: const TextStyle(fontSize: 12, color: AppColors.secondary)),
+                                Text(c.phone ?? c.email, style: TextStyle(fontSize: 12, color: AppColors.secondary)),
                               ],
                             ),
                           ),
@@ -321,14 +462,14 @@ class _MothersTab extends StatelessWidget {
                     child: BentoCard(
                       child: Row(
                         children: [
-                          const CircleAvatar(backgroundColor: AppColors.secondaryContainer, child: Icon(Icons.pregnant_woman, color: AppColors.primary)),
+                          CircleAvatar(backgroundColor: AppColors.secondaryContainer, child: Icon(Icons.pregnant_woman, color: AppColors.primary)),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(m.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                                Text(m.phone ?? m.email, style: const TextStyle(fontSize: 12, color: AppColors.secondary)),
+                                Text(m.phone ?? m.email, style: TextStyle(fontSize: 12, color: AppColors.secondary)),
                               ],
                             ),
                           ),
@@ -396,13 +537,13 @@ class _LearnTab extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(item.title, style: const TextStyle(fontWeight: FontWeight.w700)),
-                                  Text(item.description, style: const TextStyle(fontSize: 12, color: AppColors.secondary), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                  Text(item.description, style: TextStyle(fontSize: 12, color: AppColors.secondary), maxLines: 2, overflow: TextOverflow.ellipsis),
                                   const SizedBox(height: 4),
                                   Row(
                                     children: [
                                       PillChip(label: item.category),
                                       const SizedBox(width: 6),
-                                      Text(item.durationOrLength, style: const TextStyle(fontSize: 11, color: AppColors.outline)),
+                                      Text(item.durationOrLength, style: TextStyle(fontSize: 11, color: AppColors.outline)),
                                     ],
                                   ),
                                 ],

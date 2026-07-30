@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
+import 'l10n/generated/app_localizations.dart';
 import 'providers/app_data.dart';
+import 'providers/locale_provider.dart';
 import 'providers/session_provider.dart';
 import 'services/auth_service.dart';
 import 'theme/app_theme.dart';
@@ -30,12 +33,25 @@ class MamaSalamaApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AppData()),
         // Real Firebase-backed session: auth + role + live requests/chat.
         ChangeNotifierProvider(create: (_) => SessionProvider(AuthService())),
+        ChangeNotifierProvider(create: (_) => LocaleProvider()),
       ],
-      child: MaterialApp(
-        title: 'MamaSalama',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
-        home: const AuthGate(),
+      child: Consumer<LocaleProvider>(
+        builder: (context, localeProvider, _) {
+          return MaterialApp(
+            title: 'MamaSalama',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.light,
+            locale: localeProvider.locale,
+            supportedLocales: LocaleProvider.supportedLocales,
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            home: const AuthGate(),
+          );
+        },
       ),
     );
   }

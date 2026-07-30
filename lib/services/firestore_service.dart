@@ -25,11 +25,14 @@ import '../models/user_models.dart';
 ///   communityGroups/{id}             - CommunityGroup docs
 ///   communityGroups/{id}/posts/{id}  - CommunityPost docs, one per group
 class FirestoreService {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  FirestoreService({FirebaseFirestore? firestore}) : _db = firestore ?? FirebaseFirestore.instance;
+
+  final FirebaseFirestore _db;
 
   CollectionReference<Map<String, dynamic>> get _users => _db.collection('users');
   CollectionReference<Map<String, dynamic>> get _requests => _db.collection('helpRequests');
   CollectionReference<Map<String, dynamic>> get _appointments => _db.collection('appointments');
+  CollectionReference<Map<String, dynamic>> get _referrals => _db.collection('referrals');
   CollectionReference<Map<String, dynamic>> get _reminders => _db.collection('reminders');
   CollectionReference<Map<String, dynamic>> get _medicalRecords => _db.collection('medicalRecords');
   CollectionReference<Map<String, dynamic>> get _labResults => _db.collection('labResults');
@@ -55,6 +58,18 @@ class FirestoreService {
     return _users.doc(motherId).set({'assignedChwId': chwId}, SetOptions(merge: true));
   }
 
+  /// Count of mothers currently flagged `pregnancyProfile.isHighRisk` — feeds
+  /// the Admin analytics dashboard. Pure equality filters on two different
+  /// fields use Firestore's automatic single-field indexes, no composite
+  /// index needed.
+  Stream<int> watchHighRiskMotherCount() {
+    return _users
+        .where('role', isEqualTo: roleToString(UserRole.mother))
+        .where('pregnancyProfile.isHighRisk', isEqualTo: true)
+        .snapshots()
+        .map((snap) => snap.docs.length);
+  }
+
   // ----- Pregnancy profile + daily vitals -----
 
   String _dateId(DateTime d) =>
@@ -71,6 +86,14 @@ class FirestoreService {
 
   Future<void> updatePregnancyProfile(String uid, PregnancyProfile profile) {
     return _users.doc(uid).set({'pregnancyProfile': profile.toMap()}, SetOptions(merge: true));
+  }
+
+  /// Marked by a CHW or hospital worker, not the mother herself — feeds the
+  /// Admin analytics "high-risk count".
+  Future<void> setHighRisk(String uid, bool isHighRisk) {
+    return _users.doc(uid).set({
+      'pregnancyProfile': {'isHighRisk': isHighRisk},
+    }, SetOptions(merge: true));
   }
 
   Stream<DailyVitals> watchVitalsForDate(String uid, DateTime date) {
@@ -177,34 +200,20 @@ class FirestoreService {
         );
   }
 
-  /// What a CHW sees: requests assigned to them, plus unassigned ones they
-  /// could pick up.
-  Stream<List<HelpRequest>> watchRequestsForChw(String chwId) {
-    return _requests
-        .where('assignedChwId', isEqualTo: chwId)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snap) => snap.docs.map((d) => HelpRequest.fromDoc(d.id, d.data())).toList());
-  }
-
-  Stream<List<HelpRequest>> watchRequestsForMother(String motherId) {
-    return _requests
-        .where('motherId', isEqualTo: motherId)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snap) => snap.docs.map((d) => HelpRequest.fromDoc(d.id, d.data())).toList());
-  }
-
   Future<void> assignRequest({required String requestId, required String chwId, required String chwName}) {
     return _requests.doc(requestId).update({
       'assignedChwId': chwId,
       'assignedChwName': chwName,
       'status': RequestStatus.assigned.name,
+      'assignedAt': FieldValue.serverTimestamp(),
     });
   }
 
   Future<void> resolveRequest(String requestId) {
-    return _requests.doc(requestId).update({'status': RequestStatus.resolved.name});
+    return _requests.doc(requestId).update({
+      'status': RequestStatus.resolved.name,
+      'resolvedAt': FieldValue.serverTimestamp(),
+    });
   }
 
   // ----- Appointments -----
@@ -246,6 +255,30 @@ class FirestoreService {
 
   Future<void> completeAppointment(String id) {
     return _appointments.doc(id).update({'status': AppointmentStatus.completed.name});
+  }
+
+  /// Appointments routed to a specific Hospital account — see the
+  /// `hospitalId` field on Appointment.
+  Stream<List<Appointment>> watchAppointmentsForHospital(String hospitalId) {
+    return _appointments
+        .where('hospitalId', isEqualTo: hospitalId)
+        .orderBy('dateTime', descending: false)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => Appointment.fromDoc(d.id, d.data())).toList());
+  }
+
+  // ----- Referrals (CHW -> Hospital) -----
+
+  Future<void> createReferral(Referral referral) {
+    return _referrals.add(referral.toDoc());
+  }
+
+  Stream<List<Referral>> watchReferralsForHospital(String hospitalId) {
+    return _referrals
+        .where('hospitalId', isEqualTo: hospitalId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => Referral.fromDoc(d.id, d.data())).toList());
   }
 
   // ----- Chat -----

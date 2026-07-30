@@ -7,8 +7,12 @@ import '../models/user_models.dart';
 /// `role` field on their `users/{uid}` doc decides what shell they land in
 /// (see `screens/auth/auth_gate.dart`).
 class AuthService {
-  final fb.FirebaseAuth _auth = fb.FirebaseAuth.instance;
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  AuthService({fb.FirebaseAuth? auth, FirebaseFirestore? firestore})
+      : _auth = auth ?? fb.FirebaseAuth.instance,
+        _db = firestore ?? FirebaseFirestore.instance;
+
+  final fb.FirebaseAuth _auth;
+  final FirebaseFirestore _db;
 
   Stream<fb.User?> get authStateChanges => _auth.authStateChanges();
   fb.User? get currentUser => _auth.currentUser;

@@ -4,11 +4,34 @@ import 'package:intl/intl.dart' as intl;
 import '../models/user_models.dart';
 import '../providers/session_provider.dart';
 import '../services/firestore_service.dart';
+import '../services/report_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 
-class MedicalRecordsScreen extends StatelessWidget {
+class MedicalRecordsScreen extends StatefulWidget {
   const MedicalRecordsScreen({super.key});
+
+  @override
+  State<MedicalRecordsScreen> createState() => _MedicalRecordsScreenState();
+}
+
+class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
+  bool _generating = false;
+
+  Future<void> _downloadReport(FirestoreService firestore, AppUser mother) async {
+    setState(() => _generating = true);
+    try {
+      final profile = await firestore.watchPregnancyProfile(mother.uid).first;
+      final records = await firestore.watchMedicalRecordsForMother(mother.uid).first;
+      await ReportService.generateMedicalSummaryPdf(mother: mother, profile: profile, records: records);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not generate report: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _generating = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,10 +45,29 @@ class MedicalRecordsScreen extends StatelessWidget {
           AppSpacing.edgeMargin, AppSpacing.sm, AppSpacing.edgeMargin, AppSpacing.xl,
         ),
         children: [
-          Text('Medical Records', style: Theme.of(context).textTheme.headlineLarge),
-          const SizedBox(height: 4),
-          const Text('Access your clinical history and pregnancy milestones.',
-              style: TextStyle(color: AppColors.secondary)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Medical Records', style: Theme.of(context).textTheme.headlineLarge),
+                    const SizedBox(height: 4),
+                    Text('Access your clinical history and pregnancy milestones.',
+                        style: TextStyle(color: AppColors.secondary)),
+                  ],
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: _generating ? null : () => _downloadReport(firestore, mother),
+                icon: _generating
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.download_outlined, size: 16),
+                label: Text(_generating ? 'Generating...' : 'Report'),
+              ),
+            ],
+          ),
           const SizedBox(height: AppSpacing.md),
 
           // Status summary
@@ -69,7 +111,7 @@ class MedicalRecordsScreen extends StatelessWidget {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            const Text('ESTIMATED DELIVERY', style: TextStyle(color: AppColors.primaryFixed, fontSize: 10, fontWeight: FontWeight.w700)),
+                            Text('ESTIMATED DELIVERY', style: TextStyle(color: AppColors.primaryFixed, fontSize: 10, fontWeight: FontWeight.w700)),
                             Text(intl.DateFormat('MMM d, yyyy').format(profile.dueDate),
                                 style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
                           ],
@@ -127,11 +169,11 @@ class MedicalRecordsScreen extends StatelessWidget {
                                       Row(
                                         children: [
                                           Expanded(child: Text(r.title, style: const TextStyle(fontWeight: FontWeight.w700))),
-                                          Text(intl.DateFormat('MMM d').format(r.date), style: const TextStyle(color: AppColors.secondary, fontSize: 12)),
+                                          Text(intl.DateFormat('MMM d').format(r.date), style: TextStyle(color: AppColors.secondary, fontSize: 12)),
                                         ],
                                       ),
                                       const SizedBox(height: 2),
-                                      Text(r.category, style: const TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w700)),
+                                      Text(r.category, style: TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w700)),
                                       const SizedBox(height: 6),
                                       Text(r.summary, style: const TextStyle(fontSize: 13)),
                                     ],
@@ -168,14 +210,14 @@ class MedicalRecordsScreen extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.1),
+          color: Colors.white.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: Colors.white.withOpacity(0.15)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(color: AppColors.surfaceVariant, fontSize: 10)),
+            Text(label, style: TextStyle(color: AppColors.surfaceVariant, fontSize: 10)),
             const SizedBox(height: 2),
             Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
           ],
