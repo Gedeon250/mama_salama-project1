@@ -45,6 +45,7 @@ class _EducationCenterScreenState extends State<EducationCenterScreen> {
           final items = snapshot.data!
               .where((e) => _query.isEmpty || e.title.toLowerCase().contains(_query.toLowerCase()) || e.category.toLowerCase().contains(_query.toLowerCase()))
               .toList();
+          final featured = items.isEmpty ? null : items.firstWhere((e) => e.format == EducationFormat.video, orElse: () => items.first);
 
           return ListView(
             padding: const EdgeInsets.fromLTRB(
@@ -77,38 +78,48 @@ class _EducationCenterScreenState extends State<EducationCenterScreen> {
           ),
           const SizedBox(height: AppSpacing.md),
 
-          const SectionHeader(title: 'Featured Lesson'),
-          const SizedBox(height: 12),
-          BentoCard(
-            padding: EdgeInsets.zero,
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const VideoLessonScreen())),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  height: 160,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: AppColors.onTertiaryContainer,
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                  ),
+          if (featured != null) ...[
+            const SectionHeader(title: 'Featured Lesson'),
+            const SizedBox(height: 12),
+            BentoCard(
+              padding: EdgeInsets.zero,
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VideoLessonScreen(item: featured))),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      height: 160,
+                      width: double.infinity,
+                      child: featured.mediaUrl != null
+                          ? Image.network(
+                              featured.mediaUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(color: AppColors.onTertiaryContainer),
+                            )
+                          : Container(color: AppColors.onTertiaryContainer),
+                    ),
+                    Container(height: 160, color: Colors.black26),
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                      child: const Icon(Icons.play_arrow, color: Colors.white, size: 28),
+                    ),
+                    Positioned(
+                      left: 16,
+                      bottom: 12,
+                      right: 16,
+                      child: Text(featured.title,
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontSize: 16, color: Colors.white)),
+                    ),
+                  ],
                 ),
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                  child: const Icon(Icons.play_arrow, color: Colors.white, size: 28),
-                ),
-                Positioned(
-                  left: 16,
-                  bottom: 12,
-                  child: Text('Nutrition in Your Second Trimester',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontSize: 16)),
-                ),
-              ],
+              ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.md),
+          ],
 
           Row(
             children: [
@@ -134,15 +145,31 @@ class _EducationCenterScreenState extends State<EducationCenterScreen> {
           ...items.map((item) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: BentoCard(
-                  onTap: item.format == EducationFormat.video
-                      ? () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const VideoLessonScreen()))
-                      : null,
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VideoLessonScreen(item: item))),
                   child: Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(color: AppColors.onTertiaryContainer, borderRadius: BorderRadius.circular(AppRadius.md)),
-                        child: Icon(_formatIcon(item.format), color: AppColors.primary),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        child: item.mediaUrl != null
+                            ? Image.network(
+                                item.mediaUrl!,
+                                width: 48,
+                                height: 48,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  width: 48,
+                                  height: 48,
+                                  color: AppColors.onTertiaryContainer,
+                                  child: Icon(_formatIcon(item.format), color: AppColors.primary),
+                                ),
+                              )
+                            : Container(
+                                width: 48,
+                                height: 48,
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(color: AppColors.onTertiaryContainer, borderRadius: BorderRadius.circular(AppRadius.md)),
+                                child: Icon(_formatIcon(item.format), color: AppColors.primary),
+                              ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
