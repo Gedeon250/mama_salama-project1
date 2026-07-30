@@ -11,6 +11,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/chat_view.dart';
 import '../../widgets/user_avatar.dart';
+import '../messages_inbox_screen.dart';
 
 class AdminShell extends StatefulWidget {
   const AdminShell({super.key});
@@ -44,7 +45,16 @@ class _AdminShellState extends State<AdminShell> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Admin Dashboard'),
-        actions: [IconButton(onPressed: session.signOut, icon: const Icon(Icons.logout))],
+        actions: [
+          IconButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const MessagesInboxScreen()),
+            ),
+            icon: const Icon(Icons.chat_bubble_outline),
+            tooltip: 'Messages',
+          ),
+          IconButton(onPressed: session.signOut, icon: const Icon(Icons.logout)),
+        ],
       ),
       body: Column(
         children: [
@@ -554,8 +564,10 @@ class _HealthWorkersTab extends StatelessWidget {
                                     builder: (_) => ChatView(
                                       currentUserId: admin.uid,
                                       currentUserName: admin.name,
+                                      currentUserPhotoUrl: admin.photoUrl,
                                       otherUserId: c.uid,
                                       otherUserName: c.name,
+                                      otherUserPhotoUrl: c.photoUrl,
                                       appBarTitle: 'Chat with ${c.name}',
                                     ),
                                   ),

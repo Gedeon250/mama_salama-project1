@@ -384,8 +384,10 @@ class _MessagesSection extends StatelessWidget {
                                     builder: (_) => ChatView(
                                       currentUserId: mother.uid,
                                       currentUserName: mother.name,
+                                      currentUserPhotoUrl: mother.photoUrl,
                                       otherUserId: other.uid,
                                       otherUserName: other.name,
+                                      otherUserPhotoUrl: other.photoUrl,
                                       appBarTitle: 'Chat with ${other.name}',
                                     ),
                                   ),
@@ -558,8 +560,10 @@ class _CareTeamCardState extends State<_CareTeamCard> {
                                 builder: (_) => ChatView(
                                   currentUserId: mother.uid,
                                   currentUserName: mother.name,
+                                  currentUserPhotoUrl: mother.photoUrl,
                                   otherUserId: chw.uid,
                                   otherUserName: chw.name,
+                                  otherUserPhotoUrl: chw.photoUrl,
                                   appBarTitle: 'Chat with ${chw.name}',
                                 ),
                               ),

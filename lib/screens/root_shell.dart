@@ -8,6 +8,7 @@ import 'dashboard_screen.dart';
 import 'appointments_screen.dart';
 import 'health_screen.dart';
 import 'community_hub_screen.dart';
+import 'messages_inbox_screen.dart';
 import 'profile_screen.dart';
 
 class RootShell extends StatefulWidget {
@@ -26,6 +27,7 @@ class _RootShellState extends State<RootShell> {
     AppointmentsScreen(),
     HealthScreen(),
     CommunityHubScreen(),
+    MessagesInboxScreen(useBrandAppBar: true),
     ProfileScreen(),
   ];
 
@@ -59,6 +61,7 @@ class _RootShellState extends State<RootShell> {
           NavigationDestination(icon: Icon(Icons.event_outlined), selectedIcon: Icon(Icons.event), label: 'Appointments'),
           NavigationDestination(icon: Icon(Icons.favorite_border), selectedIcon: Icon(Icons.favorite), label: 'Health'),
           NavigationDestination(icon: Icon(Icons.groups_outlined), selectedIcon: Icon(Icons.groups), label: 'Community'),
+          NavigationDestination(icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Messages'),
           NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
         ],
       ),

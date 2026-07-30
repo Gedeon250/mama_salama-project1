@@ -54,6 +54,13 @@ class FirestoreService {
     return AppUser.fromDoc(doc.id, doc.data()!);
   }
 
+  Stream<AppUser?> watchUserById(String uid) {
+    return _users.doc(uid).snapshots().map((doc) {
+      if (!doc.exists) return null;
+      return AppUser.fromDoc(doc.id, doc.data()!);
+    });
+  }
+
   Future<void> assignChwToMother({required String motherId, required String chwId}) {
     return _users.doc(motherId).set({'assignedChwId': chwId}, SetOptions(merge: true));
   }
@@ -342,17 +349,40 @@ class FirestoreService {
     required String threadId,
     required String senderId,
     required String senderName,
-    required String text,
+    String text = '',
+    String? attachmentUrl,
+    ChatAttachmentType? attachmentType,
+    String? attachmentName,
   }) async {
+    final trimmed = text.trim();
+    final hasAttachment = attachmentUrl != null && attachmentUrl.isNotEmpty;
+    if (trimmed.isEmpty && !hasAttachment) return;
+
+    String preview = trimmed;
+    if (preview.isEmpty && hasAttachment) {
+      preview = attachmentType == ChatAttachmentType.image
+          ? '📷 Photo'
+          : '📎 ${attachmentName ?? 'Attachment'}';
+    }
+
     final threadRef = _db.collection('chatThreads').doc(threadId);
     await threadRef.set({
-      'lastMessage': text,
+      'lastMessage': preview,
       'lastSenderId': senderId,
       'updatedAt': FieldValue.serverTimestamp(),
       'participants': threadId.split('_'),
     }, SetOptions(merge: true));
     await threadRef.collection('messages').add(
-          ChatMessage(id: '', senderId: senderId, senderName: senderName, text: text, sentAt: DateTime.now()).toDoc(),
+          ChatMessage(
+            id: '',
+            senderId: senderId,
+            senderName: senderName,
+            text: trimmed,
+            sentAt: DateTime.now(),
+            attachmentUrl: attachmentUrl,
+            attachmentType: attachmentType,
+            attachmentName: attachmentName,
+          ).toDoc(),
         );
   }
 

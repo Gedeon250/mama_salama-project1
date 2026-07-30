@@ -11,7 +11,7 @@ import '../../widgets/common.dart';
 import '../../widgets/chat_view.dart';
 import '../../widgets/user_avatar.dart';
 import '../community_hub_screen.dart';
-import '../profile_screen.dart';
+import '../messages_inbox_screen.dart';
 
 class ChwShell extends StatefulWidget {
   const ChwShell({super.key});
@@ -45,7 +45,11 @@ class _ChwShellState extends State<ChwShell> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Health Worker'),
+        title: Text(_index == 0
+            ? 'Requests'
+            : _index == 1
+                ? 'My Mothers'
+                : 'Messages'),
         actions: [
           IconButton(
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CommunityHubScreen())),
@@ -64,6 +68,7 @@ class _ChwShellState extends State<ChwShell> {
               children: [
                 _RequestsTab(me: me, firestore: _firestore),
                 _MyMothersTab(me: me, firestore: _firestore),
+                const MessagesInboxScreen(embedded: true),
               ],
             ),
           ),
@@ -75,6 +80,7 @@ class _ChwShellState extends State<ChwShell> {
         destinations: const [
           NavigationDestination(icon: Icon(Icons.campaign_outlined), selectedIcon: Icon(Icons.campaign), label: 'Requests'),
           NavigationDestination(icon: Icon(Icons.groups_outlined), selectedIcon: Icon(Icons.groups), label: 'My Mothers'),
+          NavigationDestination(icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Messages'),
         ],
       ),
     );
@@ -185,6 +191,7 @@ class _RequestCard extends StatelessWidget {
                       builder: (_) => ChatView(
                         currentUserId: me.uid,
                         currentUserName: me.name,
+                        currentUserPhotoUrl: me.photoUrl,
                         otherUserId: request.motherId,
                         otherUserName: request.motherName,
                         appBarTitle: 'Chat with ${request.motherName}',
@@ -257,8 +264,10 @@ class _MyMothersTab extends StatelessWidget {
                             builder: (_) => ChatView(
                               currentUserId: me.uid,
                               currentUserName: me.name,
+                              currentUserPhotoUrl: me.photoUrl,
                               otherUserId: m.uid,
                               otherUserName: m.name,
+                              otherUserPhotoUrl: m.photoUrl,
                               appBarTitle: 'Chat with ${m.name}',
                             ),
                           ),
