@@ -9,7 +9,9 @@ import '../../services/report_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/chat_view.dart';
+import '../../widgets/user_avatar.dart';
 import '../community_hub_screen.dart';
+import '../profile_screen.dart';
 
 class ChwShell extends StatefulWidget {
   const ChwShell({super.key});
@@ -263,7 +265,7 @@ class _MyMothersTab extends StatelessWidget {
                         ),
                         child: Row(
                           children: [
-                            CircleAvatar(backgroundColor: AppColors.secondaryContainer, child: Icon(Icons.pregnant_woman, color: AppColors.primary)),
+                            UserAvatar(photoUrl: m.photoUrl, backgroundColor: AppColors.secondaryContainer, icon: Icons.pregnant_woman),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(

@@ -9,6 +9,7 @@ import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import '../widgets/chat_view.dart';
+import '../widgets/user_avatar.dart';
 import 'appointments_screen.dart';
 import 'emergency_sos_screen.dart';
 import 'medical_records_screen.dart';
@@ -391,7 +392,7 @@ class _MessagesSection extends StatelessWidget {
                                 ),
                         child: Row(
                           children: [
-                            CircleAvatar(backgroundColor: AppColors.onTertiaryContainer, child: Icon(Icons.volunteer_activism, color: AppColors.primary)),
+                            UserAvatar(photoUrl: other?.photoUrl, backgroundColor: AppColors.onTertiaryContainer, icon: Icons.volunteer_activism),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
@@ -539,7 +540,7 @@ class _CareTeamCardState extends State<_CareTeamCard> {
                   children: [
                     Row(
                       children: [
-                        CircleAvatar(backgroundColor: AppColors.onTertiaryContainer, child: Icon(Icons.volunteer_activism, color: AppColors.primary)),
+                        UserAvatar(photoUrl: chw?.photoUrl, backgroundColor: AppColors.onTertiaryContainer, icon: Icons.volunteer_activism),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(

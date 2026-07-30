@@ -99,7 +99,7 @@ class SessionProvider extends ChangeNotifier {
 
   Future<void> signOut() => _authService.signOut();
 
-  Future<void> resendVerificationEmail() => _authService.resendVerificationEmail();
+  Future<bool> resendVerificationEmail() => _authService.resendVerificationEmail();
 
   /// Call after the user says they've clicked the link in their inbox.
   /// For a password account this is a real check — it reloads the Firebase
@@ -130,8 +130,16 @@ class SessionProvider extends ChangeNotifier {
   }
 
   String _friendlyError(Object e) {
+    // Surfaced messages are deliberately generic; the raw error (with its
+    // Firebase error code) is logged here so it's visible in `flutter run`
+    // output / device logs when diagnosing a report like "login doesn't
+    // work" that the friendly copy alone can't distinguish.
+    debugPrint('Auth error: $e');
     if (e is NoAccountForGoogleUserException) {
       return 'No account found for that Google sign-in. Please use "Register" first.';
+    }
+    if (e is NoProfileFoundException) {
+      return 'This account has no profile set up in the app. Please register, or contact support.';
     }
     final msg = e.toString();
     if (msg.contains('google-sign-in-cancelled')) return "Google sign-in was cancelled.";

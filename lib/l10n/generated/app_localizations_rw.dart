@@ -14,7 +14,8 @@ class AppLocalizationsRw extends AppLocalizations {
   }
 
   @override
-  String get healthSnapshotSubtitle => 'Uragenda neza. Dore incamake y\'ubuzima bwawe.';
+  String get healthSnapshotSubtitle =>
+      'Uragenda neza. Dore incamake y\'ubuzima bwawe.';
 
   @override
   String get quickActionsTitle => 'Ibikorwa byihuse';
@@ -44,7 +45,8 @@ class AppLocalizationsRw extends AppLocalizations {
   String get messageButton => 'Ohereza ubutumwa';
 
   @override
-  String get noHealthWorkerAssigned => 'Nta mujyanama w\'ubuzima wahawe. Ohereza ubusabe hepfo maze umuyobozi azaguhuza n\'umwe.';
+  String get noHealthWorkerAssigned =>
+      'Nta mujyanama w\'ubuzima wahawe. Ohereza ubusabe hepfo maze umuyobozi azaguhuza n\'umwe.';
 
   @override
   String get describeHelpHint => 'Sobanura ubufasha ukeneye...';
@@ -53,7 +55,8 @@ class AppLocalizationsRw extends AppLocalizations {
   String get requestHelpButton => 'Saba Ubufasha';
 
   @override
-  String get helpRequestSentSnackbar => 'Byoherejwe ku muyobozi — umujyanama w\'ubuzima azagusubiza vuba.';
+  String get helpRequestSentSnackbar =>
+      'Byoherejwe ku muyobozi — umujyanama w\'ubuzima azagusubiza vuba.';
 
   @override
   String get messagesTitle => 'Ubutumwa';
@@ -103,13 +106,15 @@ class AppLocalizationsRw extends AppLocalizations {
   String get todaysHealthTipTitle => 'Inama y\'ubuzima y\'uyu munsi';
 
   @override
-  String get healthTipText => 'Kurya ibiryo birimo icyuma nk\'ibishyimbo n\'imboga z\'icyatsi hamwe na vitamini C bifasha umubiri gukoresha icyuma neza.';
+  String get healthTipText =>
+      'Kurya ibiryo birimo icyuma nk\'ibishyimbo n\'imboga z\'icyatsi hamwe na vitamini C bifasha umubiri gukoresha icyuma neza.';
 
   @override
   String get aiAssistantTitle => 'Umufasha wa AI wa MamaSalama';
 
   @override
-  String get aiAssistantBody => 'Iki ni ikimenyetso cy\'umufasha wa AI uzavugwa muri PRD (ibibazo ku mimerere y\'inda, gusuzuma ibimenyetso, inama ku mirire, n\'ubuhinduzi mu Kinyarwanda / Icyongereza / Gisiwahili / Igifaransa). Huza na LLM uzahitamo igihe backend izaba iteguye.';
+  String get aiAssistantBody =>
+      'Iki ni ikimenyetso cy\'umufasha wa AI uzavugwa muri PRD (ibibazo ku mimerere y\'inda, gusuzuma ibimenyetso, inama ku mirire, n\'ubuhinduzi mu Kinyarwanda / Icyongereza / Gisiwahili / Igifaransa). Huza na LLM uzahitamo igihe backend izaba iteguye.';
 
   @override
   String get gotIt => 'Ndabyumvise';
@@ -186,13 +191,15 @@ class AppLocalizationsRw extends AppLocalizations {
   String get medicalRecordsTitle => 'Inyandiko z\'Ubuvuzi';
 
   @override
-  String get medicalRecordsSubtitle => 'Inyandiko z\'ibyavuye mu isuzuma, ultrasound, no kubyara';
+  String get medicalRecordsSubtitle =>
+      'Inyandiko z\'ibyavuye mu isuzuma, ultrasound, no kubyara';
 
   @override
   String get labResultsTitle => 'Ibisubizo bya Laboratwari';
 
   @override
-  String get labResultsSubtitle => 'Isuzuma ry\'amaraso, isukari, n\'ibindi bipimo';
+  String get labResultsSubtitle =>
+      'Isuzuma ry\'amaraso, isukari, n\'ibindi bipimo';
 
   @override
   String get vaccinationsTitle => 'Inkingo';

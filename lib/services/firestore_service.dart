@@ -58,6 +58,45 @@ class FirestoreService {
     return _users.doc(motherId).set({'assignedChwId': chwId}, SetOptions(merge: true));
   }
 
+  Future<void> updateUserProfile(String uid, {String? name, String? phone, String? photoUrl}) {
+    return _users.doc(uid).set({
+      if (name != null) 'name': name,
+      if (phone != null) 'phone': phone,
+      if (photoUrl != null) 'photoUrl': photoUrl,
+    }, SetOptions(merge: true));
+  }
+
+  // ----- CHW applications (see UserRole.chwApplicant / ChwApplication) -----
+
+  Stream<List<AppUser>> watchChwApplications() {
+    return _users.where('role', isEqualTo: roleToString(UserRole.chwApplicant)).snapshots().map(
+          (snap) => snap.docs.map((d) => AppUser.fromDoc(d.id, d.data())).toList(),
+        );
+  }
+
+  Future<void> submitChwApplication(String uid, ChwApplication application) {
+    return _users.doc(uid).set({'chwApplication': application.toMap()}, SetOptions(merge: true));
+  }
+
+  Future<void> approveChwApplication(String uid) {
+    return _users.doc(uid).set({'role': roleToString(UserRole.chw)}, SetOptions(merge: true));
+  }
+
+  Future<void> requestMoreChwInfo(String uid, String note) {
+    return _users.doc(uid).set({
+      'chwApplication': {'status': ChwApplicationStatus.needsMoreInfo.name, 'adminNote': note},
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> rejectChwApplication(String uid, String? note) {
+    return _users.doc(uid).set({
+      'chwApplication': {
+        'status': ChwApplicationStatus.rejected.name,
+        if (note != null) 'adminNote': note,
+      },
+    }, SetOptions(merge: true));
+  }
+
   /// Count of mothers currently flagged `pregnancyProfile.isHighRisk` — feeds
   /// the Admin analytics dashboard. Pure equality filters on two different
   /// fields use Firestore's automatic single-field indexes, no composite

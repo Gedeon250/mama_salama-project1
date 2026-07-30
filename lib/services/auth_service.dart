@@ -3,15 +3,17 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../models/user_models.dart';
 
-/// Thrown by [AuthService.signInWithGoogle] when the Google account has no
-/// matching `users/{uid}` doc yet — the login screen uses this to tell the
-/// user to register (pick a role) instead of silently creating an account.
 class NoAccountForGoogleUserException implements Exception {}
 
-/// Thin wrapper around FirebaseAuth + the `users` Firestore collection.
-/// Every account (mother, CHW, admin) is a normal Firebase Auth user; the
-/// `role` field on their `users/{uid}` doc decides what shell they land in
-/// (see `screens/auth/auth_gate.dart`).
+/// Thrown by [AuthService.signIn] when Firebase Auth accepts the
+/// credentials but there's no matching `users/{uid}` doc — e.g. an account
+/// created directly in the Firebase console instead of through this app's
+/// own signup flow. Without this check the user would silently get stuck
+/// on AuthGate's `SessionStatus.loading` spinner forever, since
+/// `watchAppUser` never emits a non-null user for a doc that doesn't
+/// exist — see SessionProvider._onAuthChanged.
+class NoProfileFoundException implements Exception {}
+
 class AuthService {
   AuthService({fb.FirebaseAuth? auth, FirebaseFirestore? firestore, GoogleSignIn? googleSignIn})
       : _auth = auth ?? fb.FirebaseAuth.instance,
@@ -26,10 +28,6 @@ class AuthService {
   fb.User? get currentUser => _auth.currentUser;
   bool get isEmailVerified => _auth.currentUser?.emailVerified ?? false;
 
-  /// Google accounts arrive with `emailVerified` already true (Google did
-  /// that verification, not us), so that flag can't gate a Google sign-up —
-  /// only a password account's `emailVerified` reflects a real click on our
-  /// emailed link. See SessionProvider.refreshEmailVerified.
   bool get isPasswordProvider =>
       _auth.currentUser?.providerData.any((p) => p.providerId == 'password') ?? false;
 
@@ -45,10 +43,6 @@ class AuthService {
         );
   }
 
-  /// Mothers self-register. CHW applicants also self-register but are
-  /// created with role `chw`; in production you'd gate that behind an
-  /// admin-approval step rather than trusting the signup form — see the
-  /// TODO in signup_screen.dart.
   Future<void> registerAccount({
     required String name,
     required String email,
@@ -61,11 +55,25 @@ class AuthService {
     await _db.collection('users').doc(uid).set(
           AppUser(uid: uid, name: name, email: email, role: role, phone: phone, emailConfirmed: false).toDoc(),
         );
-    await credential.user!.sendEmailVerification();
+    // Don't let a verification-email hiccup (rate limit, transient error)
+    // fail the whole signup — the account + doc already exist at this
+    // point, so the user would otherwise get stuck unable to retry
+    // ("email already in use") with no account to show for it. They can
+    // hit "Resend" from the verify-email screen instead.
+    try {
+      await credential.user!.sendEmailVerification();
+    } on fb.FirebaseAuthException {
+      // Ignored — see comment above.
+    }
   }
 
-  Future<void> signIn({required String email, required String password}) {
-    return _auth.signInWithEmailAndPassword(email: email, password: password);
+  Future<void> signIn({required String email, required String password}) async {
+    final credential = await _auth.signInWithEmailAndPassword(email: email, password: password);
+    final existing = await fetchAppUser(credential.user!.uid);
+    if (existing == null) {
+      await _auth.signOut();
+      throw NoProfileFoundException();
+    }
   }
 
   Future<fb.UserCredential> _signInToGoogle() async {
@@ -118,7 +126,12 @@ class AuthService {
               emailConfirmed: false,
             ).toDoc(),
           );
-      await user.sendEmailVerification();
+      try {
+        await user.sendEmailVerification();
+      } on fb.FirebaseAuthException {
+        // See the equivalent try/catch in registerAccount — the account +
+        // doc already exist, so a send failure shouldn't fail the sign-up.
+      }
     }
   }
 
@@ -136,8 +149,16 @@ class AuthService {
 
   Future<void> sendPasswordReset(String email) => _auth.sendPasswordResetEmail(email: email);
 
-  Future<void> resendVerificationEmail() async {
-    await _auth.currentUser?.sendEmailVerification();
+  /// Returns false (instead of throwing) on failure — e.g. Firebase's
+  /// `auth/too-many-requests` if the user mashes "Resend" — so the caller
+  /// can show a message instead of hanging with an uncaught exception.
+  Future<bool> resendVerificationEmail() async {
+    try {
+      await _auth.currentUser?.sendEmailVerification();
+      return true;
+    } on fb.FirebaseAuthException {
+      return false;
+    }
   }
 
   /// Firebase caches the user's `emailVerified` flag on the client; reload

@@ -35,6 +35,10 @@ class AuthGate extends StatelessWidget {
             return const AdminShell();
           case UserRole.hospital:
             return const HospitalShell();
+          case UserRole.chwApplicant:
+            return const Scaffold(
+              body: Center(child: Text('Your CHW application is pending review.')),
+            );
         }
     }
   }

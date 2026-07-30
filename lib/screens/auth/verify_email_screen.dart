@@ -19,11 +19,17 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
 
   Future<void> _resend() async {
     setState(() => _busy = true);
-    await context.read<SessionProvider>().resendVerificationEmail();
+    final ok = await context.read<SessionProvider>().resendVerificationEmail();
     if (!mounted) return;
     setState(() => _busy = false);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Verification email sent — check your inbox.')),
+      SnackBar(
+        content: Text(
+          ok
+              ? 'Verification email sent — check your inbox.'
+              : "Couldn't send it right now — please wait a bit before trying again.",
+        ),
+      ),
     );
   }
 

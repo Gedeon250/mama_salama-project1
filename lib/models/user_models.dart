@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// The four PRD account types. Hospital accounts aren't self-serve (same
 /// bootstrap process as admin — create via console, or edit an existing
 /// doc's `role` field).
-enum UserRole { mother, chw, admin, hospital }
+enum UserRole { mother, chw, admin, hospital, chwApplicant }
 
 UserRole roleFromString(String? value) {
   switch (value) {
@@ -13,6 +13,8 @@ UserRole roleFromString(String? value) {
       return UserRole.admin;
     case 'hospital':
       return UserRole.hospital;
+    case 'chwApplicant':
+      return UserRole.chwApplicant;
     default:
       return UserRole.mother;
   }
@@ -27,11 +29,16 @@ class AppUser {
   final UserRole role;
   final String? assignedChwId; // set on mothers once a CHW is assigned
   final String? phone;
+  final String? photoUrl;
   // False only for brand-new accounts pending the post-signup verification
   // gate (see SessionProvider.needsEmailVerification); missing on any doc
   // written before this field existed, so those default to already-confirmed
   // rather than retroactively locking existing users out.
   final bool emailConfirmed;
+  // Only meaningful while role == chwApplicant (or after rejection, kept
+  // for the record); null means role == chwApplicant but nothing has been
+  // submitted yet — see ChwApplicationScreen.
+  final ChwApplication? chwApplication;
 
   AppUser({
     required this.uid,
@@ -40,10 +47,13 @@ class AppUser {
     required this.role,
     this.assignedChwId,
     this.phone,
+    this.photoUrl,
     this.emailConfirmed = true,
+    this.chwApplication,
   });
 
   factory AppUser.fromDoc(String uid, Map<String, dynamic> data) {
+    final applicationMap = data['chwApplication'] as Map<String, dynamic>?;
     return AppUser(
       uid: uid,
       name: data['name'] ?? 'Unnamed',
@@ -51,7 +61,9 @@ class AppUser {
       role: roleFromString(data['role'] as String?),
       assignedChwId: data['assignedChwId'] as String?,
       phone: data['phone'] as String?,
+      photoUrl: data['photoUrl'] as String?,
       emailConfirmed: data['emailConfirmed'] as bool? ?? true,
+      chwApplication: applicationMap != null ? ChwApplication.fromMap(applicationMap) : null,
     );
   }
 
@@ -61,7 +73,64 @@ class AppUser {
         'role': roleToString(role),
         if (assignedChwId != null) 'assignedChwId': assignedChwId,
         if (phone != null) 'phone': phone,
+        if (photoUrl != null) 'photoUrl': photoUrl,
         'emailConfirmed': emailConfirmed,
+        if (chwApplication != null) 'chwApplication': chwApplication!.toMap(),
+      };
+}
+
+enum ChwApplicationStatus { pending, needsMoreInfo, rejected }
+
+ChwApplicationStatus _chwStatusFromString(String? value) {
+  return ChwApplicationStatus.values.firstWhere((s) => s.name == value, orElse: () => ChwApplicationStatus.pending);
+}
+
+/// Submitted by a `chwApplicant` (see UserRole) for admin review before
+/// they're promoted to a full `chw` account — see AdminShell's
+/// "Applications" section and ChwApplicationScreen.
+class ChwApplication {
+  final String fieldOfExpertise;
+  final int yearsOfExperience;
+  final String? currentEmployment;
+  final String cvUrl;
+  final String proofOfExpertiseUrl;
+  final ChwApplicationStatus status;
+  final String? adminNote;
+  final DateTime submittedAt;
+
+  ChwApplication({
+    required this.fieldOfExpertise,
+    required this.yearsOfExperience,
+    this.currentEmployment,
+    required this.cvUrl,
+    required this.proofOfExpertiseUrl,
+    this.status = ChwApplicationStatus.pending,
+    this.adminNote,
+    required this.submittedAt,
+  });
+
+  factory ChwApplication.fromMap(Map<String, dynamic> map) {
+    return ChwApplication(
+      fieldOfExpertise: map['fieldOfExpertise'] ?? '',
+      yearsOfExperience: (map['yearsOfExperience'] as num?)?.toInt() ?? 0,
+      currentEmployment: map['currentEmployment'] as String?,
+      cvUrl: map['cvUrl'] ?? '',
+      proofOfExpertiseUrl: map['proofOfExpertiseUrl'] ?? '',
+      status: _chwStatusFromString(map['status'] as String?),
+      adminNote: map['adminNote'] as String?,
+      submittedAt: (map['submittedAt'] is Timestamp) ? (map['submittedAt'] as Timestamp).toDate() : DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'fieldOfExpertise': fieldOfExpertise,
+        'yearsOfExperience': yearsOfExperience,
+        if (currentEmployment != null) 'currentEmployment': currentEmployment,
+        'cvUrl': cvUrl,
+        'proofOfExpertiseUrl': proofOfExpertiseUrl,
+        'status': status.name,
+        if (adminNote != null) 'adminNote': adminNote,
+        'submittedAt': Timestamp.fromDate(submittedAt),
       };
 }
 
@@ -417,12 +486,25 @@ class HelpRequest {
 /// deterministic id built from the two participant uids (see
 /// FirestoreService.threadIdFor) so both sides always resolve the same
 /// document.
+enum ChatAttachmentType { image, pdf }
+
+ChatAttachmentType? _attachmentTypeFromString(String? value) {
+  if (value == null) return null;
+  for (final t in ChatAttachmentType.values) {
+    if (t.name == value) return t;
+  }
+  return null;
+}
+
 class ChatMessage {
   final String id;
   final String senderId;
   final String senderName;
   final String text;
   final DateTime sentAt;
+  final String? attachmentUrl;
+  final ChatAttachmentType? attachmentType;
+  final String? attachmentName;
 
   ChatMessage({
     required this.id,
@@ -430,6 +512,9 @@ class ChatMessage {
     required this.senderName,
     required this.text,
     required this.sentAt,
+    this.attachmentUrl,
+    this.attachmentType,
+    this.attachmentName,
   });
 
   factory ChatMessage.fromDoc(String id, Map<String, dynamic> data) {
@@ -439,6 +524,9 @@ class ChatMessage {
       senderName: data['senderName'] ?? '',
       text: data['text'] ?? '',
       sentAt: (data['sentAt'] is Timestamp) ? (data['sentAt'] as Timestamp).toDate() : DateTime.now(),
+      attachmentUrl: data['attachmentUrl'] as String?,
+      attachmentType: _attachmentTypeFromString(data['attachmentType'] as String?),
+      attachmentName: data['attachmentName'] as String?,
     );
   }
 
@@ -447,6 +535,9 @@ class ChatMessage {
         'senderName': senderName,
         'text': text,
         'sentAt': FieldValue.serverTimestamp(),
+        if (attachmentUrl != null) 'attachmentUrl': attachmentUrl,
+        if (attachmentType != null) 'attachmentType': attachmentType!.name,
+        if (attachmentName != null) 'attachmentName': attachmentName,
       };
 }
 

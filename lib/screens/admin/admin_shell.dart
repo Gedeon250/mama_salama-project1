@@ -9,6 +9,7 @@ import '../../services/firestore_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/chat_view.dart';
+import '../../widgets/user_avatar.dart';
 
 class AdminShell extends StatefulWidget {
   const AdminShell({super.key});
@@ -400,7 +401,7 @@ class _HealthWorkersTab extends StatelessWidget {
                     child: BentoCard(
                       child: Row(
                         children: [
-                          CircleAvatar(backgroundColor: AppColors.onTertiaryContainer, child: Icon(Icons.volunteer_activism, color: AppColors.primary)),
+                          UserAvatar(photoUrl: c.photoUrl, backgroundColor: AppColors.onTertiaryContainer, icon: Icons.volunteer_activism),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -462,7 +463,7 @@ class _MothersTab extends StatelessWidget {
                     child: BentoCard(
                       child: Row(
                         children: [
-                          CircleAvatar(backgroundColor: AppColors.secondaryContainer, child: Icon(Icons.pregnant_woman, color: AppColors.primary)),
+                          UserAvatar(photoUrl: m.photoUrl, backgroundColor: AppColors.secondaryContainer, icon: Icons.pregnant_woman),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(

@@ -7,6 +7,11 @@
     <!-- Runtime permission required on Android 13+ to show local
          notifications (chat message alerts) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- image_picker: camera capture + gallery access for profile pictures
+         and chat/CV attachments -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
     <application
         android:label="mamasalama_app"
         android:name="${applicationName}"

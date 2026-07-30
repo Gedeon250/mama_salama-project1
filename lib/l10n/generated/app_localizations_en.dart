@@ -14,7 +14,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get healthSnapshotSubtitle => 'You\'re doing great. Here\'s your health snapshot.';
+  String get healthSnapshotSubtitle =>
+      'You\'re doing great. Here\'s your health snapshot.';
 
   @override
   String get quickActionsTitle => 'Quick Actions';
@@ -44,7 +45,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get messageButton => 'Message';
 
   @override
-  String get noHealthWorkerAssigned => 'You don\'t have a health worker assigned yet. Send a request below and an admin will connect you with one.';
+  String get noHealthWorkerAssigned =>
+      'You don\'t have a health worker assigned yet. Send a request below and an admin will connect you with one.';
 
   @override
   String get describeHelpHint => 'Describe what you need help with...';
@@ -53,7 +55,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get requestHelpButton => 'Request Help';
 
   @override
-  String get helpRequestSentSnackbar => 'Sent to the admin dashboard — a health worker will follow up.';
+  String get helpRequestSentSnackbar =>
+      'Sent to the admin dashboard — a health worker will follow up.';
 
   @override
   String get messagesTitle => 'Messages';
@@ -103,13 +106,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get todaysHealthTipTitle => 'Today\'s Health Tip';
 
   @override
-  String get healthTipText => 'Eating iron-rich foods like beans and leafy greens alongside vitamin C can help your body absorb more iron.';
+  String get healthTipText =>
+      'Eating iron-rich foods like beans and leafy greens alongside vitamin C can help your body absorb more iron.';
 
   @override
   String get aiAssistantTitle => 'MamaSalama AI Assistant';
 
   @override
-  String get aiAssistantBody => 'This is a placeholder for the AI health assistant described in the PRD (pregnancy Q&A, symptom triage, nutrition advice, and Kinyarwanda / English / Swahili / French translation). Wire this up to your chosen LLM provider when the backend is ready.';
+  String get aiAssistantBody =>
+      'This is a placeholder for the AI health assistant described in the PRD (pregnancy Q&A, symptom triage, nutrition advice, and Kinyarwanda / English / Swahili / French translation). Wire this up to your chosen LLM provider when the backend is ready.';
 
   @override
   String get gotIt => 'Got it';
@@ -186,7 +191,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get medicalRecordsTitle => 'Medical Records';
 
   @override
-  String get medicalRecordsSubtitle => 'Visit notes, ultrasounds, delivery history';
+  String get medicalRecordsSubtitle =>
+      'Visit notes, ultrasounds, delivery history';
 
   @override
   String get labResultsTitle => 'Lab Results';
