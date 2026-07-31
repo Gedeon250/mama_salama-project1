@@ -59,7 +59,7 @@ void main() {
     await tester.tap(find.text('TAP TO CALL AMBULANCE'));
     await tester.pump();
 
-    expect(find.text('DISPATCH IN PROGRESS'), findsOneWidget);
+    expect(find.text('Alert sent'), findsOneWidget);
     expect(find.text('Cancel Emergency Alert'), findsOneWidget);
 
     await tester.tap(find.text('Cancel Emergency Alert'));

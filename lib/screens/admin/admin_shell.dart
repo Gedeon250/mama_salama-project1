@@ -368,7 +368,12 @@ class _AdminRequestCard extends StatelessWidget {
                     onChanged: (chwId) {
                       if (chwId == null) return;
                       final chw = chws.firstWhere((c) => c.uid == chwId);
-                      firestore.assignRequest(requestId: request.id, chwId: chw.uid, chwName: chw.name);
+                      firestore.assignRequest(
+                        requestId: request.id,
+                        motherId: request.motherId,
+                        chwId: chw.uid,
+                        chwName: chw.name,
+                      );
                     },
                   ),
                 ),
@@ -727,34 +732,70 @@ class _MothersTab extends StatelessWidget {
         if (mothers.isEmpty) {
           return const Center(child: Padding(padding: EdgeInsets.all(24), child: EmptyHint(text: 'No mothers registered yet.')));
         }
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(AppSpacing.edgeMargin, AppSpacing.sm, AppSpacing.edgeMargin, AppSpacing.xl),
-          children: mothers
-              .map((m) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: BentoCard(
-                      child: Row(
-                        children: [
-                          UserAvatar(photoUrl: m.photoUrl, backgroundColor: AppColors.secondaryContainer, icon: Icons.pregnant_woman),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+        return StreamBuilder<List<AppUser>>(
+          stream: firestore.watchUsersByRole(UserRole.chw),
+          builder: (context, chwSnap) {
+            final chws = chwSnap.data ?? [];
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.edgeMargin, AppSpacing.sm, AppSpacing.edgeMargin, AppSpacing.xl),
+              children: mothers
+                  .map((m) {
+                    final assigned = chws.where((c) => c.uid == m.assignedChwId).toList();
+                    final chwName = assigned.isEmpty ? null : assigned.first.name;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: BentoCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               children: [
-                                Text(m.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                                Text(m.phone ?? m.email, style: TextStyle(fontSize: 12, color: AppColors.secondary)),
+                                UserAvatar(photoUrl: m.photoUrl, backgroundColor: AppColors.secondaryContainer, icon: Icons.pregnant_woman),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(m.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                                      Text(m.phone ?? m.email, style: TextStyle(fontSize: 12, color: AppColors.secondary)),
+                                      if (chwName != null)
+                                        Text('CHW: $chwName', style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                                    ],
+                                  ),
+                                ),
+                                Text(
+                                  m.assignedChwId == null ? 'Unassigned' : 'Assigned',
+                                  style: TextStyle(fontSize: 11, color: m.assignedChwId == null ? AppColors.error : AppColors.primary, fontWeight: FontWeight.w700),
+                                ),
                               ],
                             ),
-                          ),
-                          Text(
-                            m.assignedChwId == null ? 'Unassigned' : 'Assigned',
-                            style: TextStyle(fontSize: 11, color: m.assignedChwId == null ? AppColors.error : AppColors.primary, fontWeight: FontWeight.w700),
-                          ),
-                        ],
+                            if (chws.isNotEmpty) ...[
+                              const SizedBox(height: 10),
+                              DropdownButtonFormField<String?>(
+                                value: chws.any((c) => c.uid == m.assignedChwId) ? m.assignedChwId : null,
+                                isExpanded: true,
+                                decoration: const InputDecoration(labelText: 'Assign Health Worker', isDense: true),
+                                items: [
+                                  const DropdownMenuItem<String?>(value: null, child: Text('Unassigned')),
+                                  ...chws.map((c) => DropdownMenuItem<String?>(value: c.uid, child: Text(c.name, overflow: TextOverflow.ellipsis))),
+                                ],
+                                onChanged: (chwId) {
+                                  if (chwId == null) {
+                                    firestore.unassignChwFromMother(m.uid);
+                                  } else {
+                                    firestore.assignChwToMother(motherId: m.uid, chwId: chwId);
+                                  }
+                                },
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ))
-              .toList(),
+                    );
+                  })
+                  .toList(),
+            );
+          },
         );
       },
     );

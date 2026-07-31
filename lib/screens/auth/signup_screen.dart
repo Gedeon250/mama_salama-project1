@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/session_provider.dart';
 import '../../models/user_models.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/form_validators.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -10,8 +11,6 @@ class SignupScreen extends StatefulWidget {
   @override
   State<SignupScreen> createState() => _SignupScreenState();
 }
-
-final _emailFormat = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
 class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
@@ -26,12 +25,13 @@ class _SignupScreenState extends State<SignupScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _submitting = true);
     final session = context.read<SessionProvider>();
+    final phoneDigits = FormValidators.sanitizePhone(_phoneController.text);
     final ok = await session.register(
       name: _nameController.text.trim(),
-      email: _emailController.text.trim(),
+      email: FormValidators.sanitizeEmail(_emailController.text),
       password: _passwordController.text,
       role: _role,
-      phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
+      phone: phoneDigits.isEmpty ? null : phoneDigits,
     );
     if (!mounted) return;
     setState(() => _submitting = false);
@@ -101,17 +101,14 @@ class _SignupScreenState extends State<SignupScreen> {
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 decoration: const InputDecoration(labelText: 'Email'),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Enter your email';
-                  if (!_emailFormat.hasMatch(v.trim())) return 'Enter a valid email address';
-                  return null;
-                },
+                validator: FormValidators.validateEmail,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: 'Phone (optional)'),
+                decoration: const InputDecoration(labelText: 'Phone (optional, 10 digits)'),
+                validator: (v) => FormValidators.validatePhone(v, required: false),
               ),
               const SizedBox(height: 12),
               TextFormField(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart' as intl;
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/session_provider.dart';
 import '../../models/user_models.dart';
 import '../../services/chat_alert_service.dart';
@@ -285,6 +286,7 @@ class _RequestCard extends StatelessWidget {
                       ElevatedButton(
                         onPressed: () => firestore.assignRequest(
                           requestId: request.id,
+                          motherId: request.motherId,
                           chwId: me.uid,
                           chwName: me.name,
                           chwPhone: me.phone,
@@ -349,7 +351,7 @@ class _MyMothersTab extends StatelessWidget {
           return const Center(
             child: Padding(
               padding: EdgeInsets.all(24),
-              child: EmptyHint(text: 'No mothers assigned to you yet. Claim a request to get started.'),
+              child: EmptyHint(text: 'No mothers assigned to you yet. Claim a help request or wait for an admin to assign you.'),
             ),
           );
         }
@@ -397,7 +399,14 @@ class _MyMothersTab extends StatelessWidget {
                                 children: [
                                   Row(
                                     children: [
-                                      Text(m.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                                      Expanded(
+                                        child: Text(
+                                          m.name,
+                                          style: const TextStyle(fontWeight: FontWeight.w700),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
                                       if (unread) ...[
                                         const SizedBox(width: 6),
                                         Icon(Icons.circle, size: 8, color: AppColors.error),
@@ -425,6 +434,11 @@ class _MyMothersTab extends StatelessWidget {
                               },
                             ),
                             IconButton(
+                              onPressed: () => _showPregnancyDocsSheet(context, firestore, m),
+                              icon: Icon(Icons.folder_shared_outlined, color: AppColors.primary),
+                              tooltip: 'Pregnancy documents',
+                            ),
+                            IconButton(
                               onPressed: () => _showAddRecordSheet(context, firestore, m),
                               icon: Icon(Icons.note_add_outlined, color: AppColors.primary),
                               tooltip: 'Add record',
@@ -441,6 +455,67 @@ class _MyMothersTab extends StatelessWidget {
                     );
                   })
                   .toList(),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showPregnancyDocsSheet(BuildContext context, FirestoreService firestore, AppUser forMother) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl))),
+      builder: (ctx) {
+        return StreamBuilder<PregnancyProfile>(
+          stream: firestore.watchPregnancyProfile(forMother.uid),
+          builder: (context, snap) {
+            final profile = snap.data;
+            if (profile == null) {
+              return const Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            if (!profile.shareAttachmentsWithChw) {
+              return Padding(
+                padding: const EdgeInsets.all(24),
+                child: EmptyHint(
+                  icon: Icons.lock_outline,
+                  text: '${forMother.name} has not shared pregnancy documents with health workers.',
+                ),
+              );
+            }
+            if (profile.attachments.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.all(24),
+                child: EmptyHint(
+                  icon: Icons.folder_off_outlined,
+                  text: 'No pregnancy documents attached yet.',
+                ),
+              );
+            }
+            return ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.fromLTRB(AppSpacing.edgeMargin, AppSpacing.md, AppSpacing.edgeMargin, AppSpacing.xl),
+              children: [
+                Text('${forMother.name}\'s documents', style: Theme.of(context).textTheme.headlineSmall),
+                const SizedBox(height: 12),
+                ...profile.attachments.map((a) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.attach_file, color: AppColors.primary),
+                      title: Text(a.fileName),
+                      trailing: Icon(Icons.open_in_new, color: AppColors.outline),
+                      onTap: () async {
+                        final uri = Uri.tryParse(a.url);
+                        if (uri == null) return;
+                        final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        if (!ok && ctx.mounted) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Could not open file.')));
+                        }
+                      },
+                    )),
+              ],
             );
           },
         );
@@ -732,11 +807,13 @@ class _ReferralSheetState extends State<_ReferralSheet> {
                 return TextField(controller: _hospitalNameController, decoration: const InputDecoration(labelText: 'Referring to (hospital/clinic name)'));
               }
               return DropdownButtonFormField<AppUser>(
-                value: _selectedHospital,
+                initialValue: _selectedHospital,
                 isExpanded: true,
                 decoration: const InputDecoration(labelText: 'Referring to (registered hospital)'),
                 items: hospitals.map((h) => DropdownMenuItem(value: h, child: Text(h.name, overflow: TextOverflow.ellipsis))).toList(),
-                onChanged: (h) => setState(() => _selectedHospital = h),
+                onChanged: (h) {
+                  setState(() => _selectedHospital = h);
+                },
               );
             },
           ),

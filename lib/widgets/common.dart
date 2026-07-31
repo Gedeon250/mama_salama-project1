@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import '../screens/messages_inbox_screen.dart';
 import '../theme/app_theme.dart';
 
-/// Shared top app bar matching the Stitch header pattern: avatar + brand
-/// wordmark on the left, optional back button, notification bell on the
-/// right.
 class MamaAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final bool showBack;
+  final bool showMessages;
   final List<Widget>? actions;
 
   const MamaAppBar({
     super.key,
     this.title = 'MamaSalama',
     this.showBack = false,
+    this.showMessages = true,
     this.actions,
   });
 
@@ -48,10 +48,16 @@ class MamaAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       actions: [
         ...?actions,
-        IconButton(
-          onPressed: () {},
-          icon: Icon(Icons.notifications_outlined, color: AppColors.primary),
-        ),
+        if (showMessages && !showBack)
+          IconButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const MessagesInboxScreen(useBrandAppBar: true),
+              ),
+            ),
+            tooltip: 'Messages',
+            icon: Icon(Icons.chat_bubble_outline, color: AppColors.primary),
+          ),
         const SizedBox(width: 4),
       ],
     );
@@ -209,10 +215,6 @@ class EmptyHint extends StatelessWidget {
   }
 }
 
-/// Thin banner shown at the top of a role shell whenever there's no network
-/// connection. Firestore keeps working offline (reads from cache, writes
-/// queue locally and sync once back online) — this is just honesty about
-/// that state, not a blocker.
 class ConnectivityBanner extends StatefulWidget {
   const ConnectivityBanner({super.key});
 

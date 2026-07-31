@@ -8,6 +8,7 @@ import '../services/firestore_service.dart';
 import '../services/location_service.dart';
 import '../services/launchers.dart';
 import '../theme/app_theme.dart';
+import '../widgets/chat_view.dart';
 import '../widgets/common.dart';
 import 'sos_status.dart';
 
@@ -32,11 +33,21 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with SingleTick
   // True only in the brief window between tapping SOS and the request landing
   // in the stream (while we grab a GPS fix).
   bool _locating = false;
+  AppUser? _assignedChw;
 
   @override
   void initState() {
     super.initState();
     _pulseController = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat();
+    _loadAssignedChw();
+  }
+
+  Future<void> _loadAssignedChw() async {
+    final mother = context.read<SessionProvider>().currentUser;
+    final chwId = mother?.assignedChwId;
+    if (chwId == null) return;
+    final chw = await _firestore.getUserById(chwId);
+    if (mounted) setState(() => _assignedChw = chw);
   }
 
   @override
@@ -48,6 +59,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with SingleTick
   Future<void> _triggerSos(AppData data) async {
     data.startSos();
     setState(() => _locating = true);
+    data.updateSosStatus('Help request sent to the care team queue.');
 
     final mother = context.read<SessionProvider>().currentUser;
     if (mother == null) {
@@ -96,10 +108,28 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with SingleTick
     });
   }
 
+  void _messageChw(AppUser mother) {
+    final chw = _assignedChw;
+    if (chw == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ChatView(
+          currentUserId: mother.uid,
+          currentUserName: mother.name,
+          currentUserPhotoUrl: mother.photoUrl,
+          otherUserId: chw.uid,
+          otherUserName: chw.name,
+          otherUserPhotoUrl: chw.photoUrl,
+          appBarTitle: 'Chat with ${chw.name}',
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = context.watch<AppData>();
-    final mother = context.read<SessionProvider>().currentUser;
+    final mother = context.watch<SessionProvider>().currentUser;
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
@@ -136,7 +166,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with SingleTick
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 24),
                             child: Text(
-                              data.sosActive ? l10n.dispatchInProgress : l10n.tapToCallAmbulance,
+                              data.sosActive ? 'Alert sent' : l10n.tapToCallAmbulance,
                               textAlign: TextAlign.center,
                               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                             ),

@@ -10,6 +10,7 @@ import '../models/user_models.dart';
 import '../services/cloudinary_service.dart';
 import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/form_validators.dart';
 import 'user_avatar.dart';
 
 /// A self-contained chat screen for exactly two participants. Used for:
@@ -129,7 +130,9 @@ class _ChatViewState extends State<ChatView> {
           imageQuality: 85,
         );
         if (picked == null) return;
-        final url = await _cloudinary.uploadChatAttachment(_threadId, File(picked.path), isImage: true);
+        final file = File(picked.path);
+        FormValidators.assertAttachmentAllowed(file, allowedExtensions: const ['png', 'jpg', 'jpeg']);
+        final url = await _cloudinary.uploadChatAttachment(_threadId, file, isImage: true);
         await _send(
           attachmentUrl: url,
           attachmentType: ChatAttachmentType.image,
@@ -142,6 +145,7 @@ class _ChatViewState extends State<ChatView> {
         );
         if (result == null || result.files.single.path == null) return;
         final file = File(result.files.single.path!);
+        FormValidators.assertAttachmentAllowed(file, allowedExtensions: const ['pdf']);
         final name = result.files.single.name;
         final url = await _cloudinary.uploadChatAttachment(_threadId, file, isImage: false);
         await _send(

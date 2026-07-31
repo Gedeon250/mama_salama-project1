@@ -22,6 +22,20 @@ UserRole roleFromString(String? value) {
 
 String roleToString(UserRole role) => role.name;
 
+class EmergencyContact {
+  final String name;
+  final String phone;
+
+  EmergencyContact({required this.name, required this.phone});
+
+  factory EmergencyContact.fromMap(Map<String, dynamic> map) => EmergencyContact(
+        name: map['name'] as String? ?? '',
+        phone: map['phone'] as String? ?? '',
+      );
+
+  Map<String, dynamic> toMap() => {'name': name, 'phone': phone};
+}
+
 class AppUser {
   final String uid;
   final String name;
@@ -35,6 +49,10 @@ class AppUser {
   // written before this field existed, so those default to already-confirmed
   // rather than retroactively locking existing users out.
   final bool emailConfirmed;
+  // True once the mother has saved a real pregnancyProfile (onboarding or
+  // Health edit). Client defaults are NOT written until then.
+  final bool hasPregnancyProfile;
+  final List<EmergencyContact> emergencyContacts;
   // Only meaningful while role == chwApplicant (or after rejection, kept
   // for the record); null means role == chwApplicant but nothing has been
   // submitted yet — see ChwApplicationScreen.
@@ -49,11 +67,14 @@ class AppUser {
     this.phone,
     this.photoUrl,
     this.emailConfirmed = true,
+    this.hasPregnancyProfile = false,
+    this.emergencyContacts = const [],
     this.chwApplication,
   });
 
   factory AppUser.fromDoc(String uid, Map<String, dynamic> data) {
     final applicationMap = data['chwApplication'] as Map<String, dynamic>?;
+    final contactsRaw = data['emergencyContacts'] as List?;
     return AppUser(
       uid: uid,
       name: data['name'] ?? 'Unnamed',
@@ -63,6 +84,12 @@ class AppUser {
       phone: data['phone'] as String?,
       photoUrl: data['photoUrl'] as String?,
       emailConfirmed: data['emailConfirmed'] as bool? ?? true,
+      hasPregnancyProfile: data['pregnancyProfile'] != null,
+      emergencyContacts: contactsRaw
+              ?.whereType<Map>()
+              .map((e) => EmergencyContact.fromMap(Map<String, dynamic>.from(e)))
+              .toList() ??
+          const [],
       chwApplication: applicationMap != null ? ChwApplication.fromMap(applicationMap) : null,
     );
   }
@@ -75,6 +102,7 @@ class AppUser {
         if (phone != null) 'phone': phone,
         if (photoUrl != null) 'photoUrl': photoUrl,
         'emailConfirmed': emailConfirmed,
+        if (emergencyContacts.isNotEmpty) 'emergencyContacts': emergencyContacts.map((c) => c.toMap()).toList(),
         if (chwApplication != null) 'chwApplication': chwApplication!.toMap(),
       };
 }
@@ -136,6 +164,38 @@ class ChwApplication {
 
 /// Stored as a `pregnancyProfile` map on the mother's own users/{uid} doc
 /// (not a separate collection) — see FirestoreService.watchPregnancyProfile.
+class PregnancyAttachment {
+  final String url;
+  final String fileName;
+  final String contentType;
+  final DateTime uploadedAt;
+
+  PregnancyAttachment({
+    required this.url,
+    required this.fileName,
+    required this.contentType,
+    required this.uploadedAt,
+  });
+
+  factory PregnancyAttachment.fromMap(Map<String, dynamic> map) {
+    return PregnancyAttachment(
+      url: map['url'] as String? ?? '',
+      fileName: map['fileName'] as String? ?? 'document',
+      contentType: map['contentType'] as String? ?? 'application/octet-stream',
+      uploadedAt: (map['uploadedAt'] is Timestamp)
+          ? (map['uploadedAt'] as Timestamp).toDate()
+          : DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'url': url,
+        'fileName': fileName,
+        'contentType': contentType,
+        'uploadedAt': Timestamp.fromDate(uploadedAt),
+      };
+}
+
 class PregnancyProfile {
   final int pregnancyWeek;
   final DateTime dueDate;
@@ -143,6 +203,9 @@ class PregnancyProfile {
   final List<String> allergies;
   final String babySizeComparison;
   final bool isHighRisk;
+  final List<PregnancyAttachment> attachments;
+  /// When false, assigned CHWs should not be shown pregnancy documents.
+  final bool shareAttachmentsWithChw;
 
   PregnancyProfile({
     required this.pregnancyWeek,
@@ -151,6 +214,8 @@ class PregnancyProfile {
     required this.allergies,
     required this.babySizeComparison,
     this.isHighRisk = false,
+    this.attachments = const [],
+    this.shareAttachmentsWithChw = true,
   });
 
   int get trimester => pregnancyWeek <= 13 ? 1 : (pregnancyWeek <= 26 ? 2 : 3);
@@ -165,6 +230,7 @@ class PregnancyProfile {
       );
 
   factory PregnancyProfile.fromMap(Map<String, dynamic> map) {
+    final attachmentsRaw = map['attachments'] as List?;
     return PregnancyProfile(
       pregnancyWeek: (map['pregnancyWeek'] as num?)?.toInt() ?? 4,
       dueDate: (map['dueDate'] is Timestamp)
@@ -174,6 +240,12 @@ class PregnancyProfile {
       allergies: (map['allergies'] as List?)?.map((e) => e.toString()).toList() ?? [],
       babySizeComparison: map['babySizeComparison'] ?? 'Poppy seed',
       isHighRisk: map['isHighRisk'] ?? false,
+      attachments: attachmentsRaw
+              ?.whereType<Map>()
+              .map((e) => PregnancyAttachment.fromMap(Map<String, dynamic>.from(e)))
+              .toList() ??
+          const [],
+      shareAttachmentsWithChw: map['shareAttachmentsWithChw'] as bool? ?? true,
     );
   }
 
@@ -184,13 +256,36 @@ class PregnancyProfile {
         'allergies': allergies,
         'babySizeComparison': babySizeComparison,
         'isHighRisk': isHighRisk,
+        'attachments': attachments.map((a) => a.toMap()).toList(),
+        'shareAttachmentsWithChw': shareAttachmentsWithChw,
       };
+
+  PregnancyProfile copyWith({
+    int? pregnancyWeek,
+    DateTime? dueDate,
+    String? bloodType,
+    List<String>? allergies,
+    String? babySizeComparison,
+    bool? isHighRisk,
+    List<PregnancyAttachment>? attachments,
+    bool? shareAttachmentsWithChw,
+  }) {
+    return PregnancyProfile(
+      pregnancyWeek: pregnancyWeek ?? this.pregnancyWeek,
+      dueDate: dueDate ?? this.dueDate,
+      bloodType: bloodType ?? this.bloodType,
+      allergies: allergies ?? this.allergies,
+      babySizeComparison: babySizeComparison ?? this.babySizeComparison,
+      isHighRisk: isHighRisk ?? this.isHighRisk,
+      attachments: attachments ?? this.attachments,
+      shareAttachmentsWithChw: shareAttachmentsWithChw ?? this.shareAttachmentsWithChw,
+    );
+  }
 }
 
-/// One doc per calendar day at users/{uid}/vitals/{yyyy-MM-dd}. Point
-/// readings (weight/BP/blood sugar) are optional since there's no capture
-/// UI for them yet; kicks/contractions/water/mood are written immediately
-/// as they're logged during that day.
+/// One doc per calendar day at users/{uid}/vitals/{yyyy-MM-dd}. Weight, BP,
+/// and blood sugar are logged from the Health screen; kicks/contractions/
+/// water/mood are written as they're tracked during that day.
 class DailyVitals {
   final String id;
   final double? weightKg;

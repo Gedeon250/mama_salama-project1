@@ -65,11 +65,16 @@ class FirestoreService {
     return _users.doc(motherId).set({'assignedChwId': chwId}, SetOptions(merge: true));
   }
 
-  Future<void> updateUserProfile(String uid, {String? name, String? phone, String? photoUrl}) {
+  Future<void> unassignChwFromMother(String motherId) {
+    return _users.doc(motherId).update({'assignedChwId': FieldValue.delete()});
+  }
+
+  Future<void> updateUserProfile(String uid, {String? name, String? phone, String? photoUrl, List<EmergencyContact>? emergencyContacts}) {
     return _users.doc(uid).set({
       if (name != null) 'name': name,
       if (phone != null) 'phone': phone,
       if (photoUrl != null) 'photoUrl': photoUrl,
+      if (emergencyContacts != null) 'emergencyContacts': emergencyContacts.map((c) => c.toMap()).toList(),
     }, SetOptions(merge: true));
   }
 
@@ -191,6 +196,22 @@ class FirestoreService {
     return _vitals(uid).doc(_dateId(DateTime.now())).set({'moodToday': mood, ..._todayStamp()}, SetOptions(merge: true));
   }
 
+  Future<void> logWeight(String uid, double weightKg) {
+    return _vitals(uid).doc(_dateId(DateTime.now())).set({'weightKg': weightKg, ..._todayStamp()}, SetOptions(merge: true));
+  }
+
+  Future<void> logBloodPressure(String uid, {required int systolic, required int diastolic}) {
+    return _vitals(uid).doc(_dateId(DateTime.now())).set({
+      'systolicBp': systolic,
+      'diastolicBp': diastolic,
+      ..._todayStamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> logBloodSugar(String uid, int bloodSugar) {
+    return _vitals(uid).doc(_dateId(DateTime.now())).set({'bloodSugar': bloodSugar, ..._todayStamp()}, SetOptions(merge: true));
+  }
+
   // ----- Medical records, lab results, vaccinations -----
   // Written only by a CHW for one of their assigned mothers (or an admin);
   // a mother can only ever read her own — see firestore.rules.
@@ -270,19 +291,25 @@ class FirestoreService {
         .map((snap) => snap.docs.map((d) => HelpRequest.fromDoc(d.id, d.data())).toList());
   }
 
+  /// Assigns a help request to a CHW and sets the durable care link on the
+  /// mother's user doc in one batch (Claim / Admin assign).
   Future<void> assignRequest({
     required String requestId,
+    required String motherId,
     required String chwId,
     required String chwName,
     String? chwPhone,
   }) {
-    return _requests.doc(requestId).update({
+    final batch = _db.batch();
+    batch.update(_requests.doc(requestId), {
       'assignedChwId': chwId,
       'assignedChwName': chwName,
       if (chwPhone != null) 'assignedChwPhone': chwPhone,
       'status': RequestStatus.assigned.name,
       'assignedAt': FieldValue.serverTimestamp(),
     });
+    batch.set(_users.doc(motherId), {'assignedChwId': chwId}, SetOptions(merge: true));
+    return batch.commit();
   }
 
   Future<void> resolveRequest(String requestId) {

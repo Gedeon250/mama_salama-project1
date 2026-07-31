@@ -9,6 +9,7 @@ import '../../providers/session_provider.dart';
 import '../../services/cloudinary_service.dart';
 import '../../services/firestore_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/form_validators.dart';
 import '../../widgets/common.dart';
 
 /// Shown by AuthGate while `role == chwApplicant`. Collects application
@@ -54,10 +55,16 @@ class _ChwApplicationScreenState extends State<ChwApplicationScreen> {
   Future<void> _pickFile({required bool cv}) async {
     final result = await FilePicker.pickFiles(
       type: FileType.custom,
-      allowedExtensions: const ['pdf', 'png', 'jpg', 'jpeg', 'doc', 'docx'],
+      allowedExtensions: FormValidators.attachmentExtensions,
     );
     if (result == null || result.files.single.path == null) return;
     final file = File(result.files.single.path!);
+    final error = FormValidators.validateAttachment(file);
+    if (error != null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      return;
+    }
     setState(() {
       if (cv) {
         _cvFile = file;
