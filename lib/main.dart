@@ -34,6 +34,7 @@ class MamaSalamaApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AppData()),
         // Real Firebase-backed session: auth + role + live requests/chat.
         ChangeNotifierProvider(create: (_) => SessionProvider(AuthService())),
+        // Chosen language (Kinyarwanda/English), persisted across launches.
         ChangeNotifierProvider(create: (_) => LocaleProvider()),
         ChangeNotifierProvider(create: (_) => ThemeModeProvider()),
       ],

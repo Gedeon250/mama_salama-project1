@@ -6,6 +6,7 @@ import '../../providers/session_provider.dart';
 import '../../models/user_models.dart';
 import '../../services/chat_alert_service.dart';
 import '../../services/firestore_service.dart';
+import '../../services/launchers.dart';
 import '../../services/report_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common.dart';
@@ -149,6 +150,16 @@ class _RequestsTab extends StatelessWidget {
   }
 }
 
+/// Pre-registered drivers a CHW can dispatch, matching the design's journey
+/// map ("the app displays pre-registered drivers; a call is required to
+/// verify"). Seeded locally for the demo; swap for a Firestore `drivers`
+/// collection later without touching the card.
+const _presetDrivers = <(String name, String phone)>[
+  ('James Uwimana (moto)', '+250788111222'),
+  ('Alice Mukamana (car)', '+250788333444'),
+  ('Eric Habimana (moto)', '+250788555666'),
+];
+
 class _RequestCard extends StatelessWidget {
   final HelpRequest request;
   final AppUser me;
@@ -157,11 +168,41 @@ class _RequestCard extends StatelessWidget {
 
   const _RequestCard({required this.request, required this.me, required this.firestore, required this.showClaim});
 
+  Future<void> _arrangeTransport(BuildContext context) async {
+    final picked = await showModalBottomSheet<(String, String)>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Choose a driver', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            ),
+            for (final d in _presetDrivers)
+              ListTile(
+                leading: const Icon(Icons.local_taxi_outlined, color: AppColors.primary),
+                title: Text(d.$1),
+                subtitle: Text(d.$2),
+                onTap: () => Navigator.of(ctx).pop(d),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (picked != null) {
+      await firestore.arrangeTransport(requestId: request.id, driverName: picked.$1, driverPhone: picked.$2);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isSos = request.type == RequestType.sos;
+    final active = request.status != RequestStatus.resolved;
     return BentoCard(
-      color: isSos && request.status != RequestStatus.resolved ? AppColors.errorContainer : null,
+      color: isSos && active ? AppColors.errorContainer : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -175,44 +216,114 @@ class _RequestCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(request.message, style: const TextStyle(fontSize: 13)),
+
+          // SOS location (Gap 3) — tap to navigate to the mother.
+          if (request.hasLocation) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.location_on, size: 16, color: AppColors.error),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    '${request.lat!.toStringAsFixed(5)}, ${request.lng!.toStringAsFixed(5)}',
+                    style: const TextStyle(fontSize: 12, color: AppColors.secondary),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () => openInMaps(request.lat!, request.lng!),
+                  icon: const Icon(Icons.map_outlined, size: 16),
+                  label: const Text('Open in Maps'),
+                ),
+              ],
+            ),
+          ] else if (isSos) ...[
+            const SizedBox(height: 8),
+            const Row(
+              children: [
+                Icon(Icons.location_off_outlined, size: 16, color: AppColors.secondary),
+                SizedBox(width: 4),
+                Text('No location shared', style: TextStyle(fontSize: 12, color: AppColors.secondary)),
+              ],
+            ),
+          ],
+
+          // Arranged transport (Gap 4).
+          if (request.transportStatus == TransportStatus.arranged) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.local_taxi, size: 16, color: AppColors.primary),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    'Transport: ${request.driverName ?? 'driver'}',
+                    style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                if (request.driverPhone != null)
+                  TextButton.icon(
+                    onPressed: () => callNumber(request.driverPhone!),
+                    icon: const Icon(Icons.call, size: 16),
+                    label: const Text('Call'),
+                  ),
+              ],
+            ),
+          ],
+
           const SizedBox(height: 10),
           Row(
             children: [
               PillChip(label: request.status.name),
               const Spacer(),
-              if (showClaim)
-                ElevatedButton(
-                  onPressed: () => firestore.assignRequest(
-                    requestId: request.id,
-                    motherId: request.motherId,
-                    chwId: me.uid,
-                    chwName: me.name,
-                  ),
-                  child: const Text('Claim'),
-                )
-              else if (request.status != RequestStatus.resolved) ...[
-                OutlinedButton.icon(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => ChatView(
-                        currentUserId: me.uid,
-                        currentUserName: me.name,
-                        currentUserPhotoUrl: me.photoUrl,
-                        otherUserId: request.motherId,
-                        otherUserName: request.motherName,
-                        appBarTitle: 'Chat with ${request.motherName}',
+              Flexible(
+                child: Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    if (showClaim)
+                      ElevatedButton(
+                        onPressed: () => firestore.assignRequest(
+                          requestId: request.id,
+                          motherId: request.motherId,
+                          chwId: me.uid,
+                          chwName: me.name,
+                          chwPhone: me.phone,
+                        ),
+                        child: const Text('Claim'),
+                      )
+                    else if (active) ...[
+                      OutlinedButton.icon(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => ChatView(
+                              currentUserId: me.uid,
+                              currentUserName: me.name,
+                              currentUserPhotoUrl: me.photoUrl,
+                              otherUserId: request.motherId,
+                              otherUserName: request.motherName,
+                              appBarTitle: 'Chat with ${request.motherName}',
+                            ),
+                          ),
+                        ),
+                        icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                        label: const Text('Message'),
                       ),
-                    ),
-                  ),
-                  icon: const Icon(Icons.chat_bubble_outline, size: 16),
-                  label: const Text('Message'),
+                      if (isSos && request.transportStatus != TransportStatus.arranged)
+                        OutlinedButton.icon(
+                          onPressed: () => _arrangeTransport(context),
+                          icon: const Icon(Icons.local_taxi_outlined, size: 16),
+                          label: const Text('Transport'),
+                        ),
+                      TextButton(
+                        onPressed: () => firestore.resolveRequest(request.id),
+                        child: const Text('Resolve'),
+                      ),
+                    ],
+                  ],
                 ),
-                const SizedBox(width: 8),
-                TextButton(
-                  onPressed: () => firestore.resolveRequest(request.id),
-                  child: const Text('Resolve'),
-                ),
-              ],
+              ),
             ],
           ),
         ],
