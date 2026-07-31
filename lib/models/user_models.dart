@@ -22,6 +22,20 @@ UserRole roleFromString(String? value) {
 
 String roleToString(UserRole role) => role.name;
 
+class EmergencyContact {
+  final String name;
+  final String phone;
+
+  EmergencyContact({required this.name, required this.phone});
+
+  factory EmergencyContact.fromMap(Map<String, dynamic> map) => EmergencyContact(
+        name: map['name'] as String? ?? '',
+        phone: map['phone'] as String? ?? '',
+      );
+
+  Map<String, dynamic> toMap() => {'name': name, 'phone': phone};
+}
+
 class AppUser {
   final String uid;
   final String name;
@@ -35,6 +49,10 @@ class AppUser {
   // written before this field existed, so those default to already-confirmed
   // rather than retroactively locking existing users out.
   final bool emailConfirmed;
+  // True once the mother has saved a real pregnancyProfile (onboarding or
+  // Health edit). Client defaults are NOT written until then.
+  final bool hasPregnancyProfile;
+  final List<EmergencyContact> emergencyContacts;
   // Only meaningful while role == chwApplicant (or after rejection, kept
   // for the record); null means role == chwApplicant but nothing has been
   // submitted yet — see ChwApplicationScreen.
@@ -49,11 +67,14 @@ class AppUser {
     this.phone,
     this.photoUrl,
     this.emailConfirmed = true,
+    this.hasPregnancyProfile = false,
+    this.emergencyContacts = const [],
     this.chwApplication,
   });
 
   factory AppUser.fromDoc(String uid, Map<String, dynamic> data) {
     final applicationMap = data['chwApplication'] as Map<String, dynamic>?;
+    final contactsRaw = data['emergencyContacts'] as List?;
     return AppUser(
       uid: uid,
       name: data['name'] ?? 'Unnamed',
@@ -63,6 +84,12 @@ class AppUser {
       phone: data['phone'] as String?,
       photoUrl: data['photoUrl'] as String?,
       emailConfirmed: data['emailConfirmed'] as bool? ?? true,
+      hasPregnancyProfile: data['pregnancyProfile'] != null,
+      emergencyContacts: contactsRaw
+              ?.whereType<Map>()
+              .map((e) => EmergencyContact.fromMap(Map<String, dynamic>.from(e)))
+              .toList() ??
+          const [],
       chwApplication: applicationMap != null ? ChwApplication.fromMap(applicationMap) : null,
     );
   }
@@ -75,6 +102,7 @@ class AppUser {
         if (phone != null) 'phone': phone,
         if (photoUrl != null) 'photoUrl': photoUrl,
         'emailConfirmed': emailConfirmed,
+        if (emergencyContacts.isNotEmpty) 'emergencyContacts': emergencyContacts.map((c) => c.toMap()).toList(),
         if (chwApplication != null) 'chwApplication': chwApplication!.toMap(),
       };
 }
@@ -187,10 +215,9 @@ class PregnancyProfile {
       };
 }
 
-/// One doc per calendar day at users/{uid}/vitals/{yyyy-MM-dd}. Point
-/// readings (weight/BP/blood sugar) are optional since there's no capture
-/// UI for them yet; kicks/contractions/water/mood are written immediately
-/// as they're logged during that day.
+/// One doc per calendar day at users/{uid}/vitals/{yyyy-MM-dd}. Weight, BP,
+/// and blood sugar are logged from the Health screen; kicks/contractions/
+/// water/mood are written as they're tracked during that day.
 class DailyVitals {
   final String id;
   final double? weightKg;

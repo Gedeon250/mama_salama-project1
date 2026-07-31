@@ -124,6 +124,7 @@ class HealthScreen extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: BentoCard(
+                          onTap: () => _showLogWeightDialog(context, firestore, mother.uid, today.weightKg),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -132,6 +133,8 @@ class HealthScreen extends StatelessWidget {
                                   Icon(Icons.monitor_weight_outlined, color: AppColors.primary, size: 18),
                                   const SizedBox(width: 6),
                                   Text(l10n.weightTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                                  const Spacer(),
+                                  Icon(Icons.add, size: 16, color: AppColors.primary),
                                 ],
                               ),
                               const SizedBox(height: 8),
@@ -155,6 +158,7 @@ class HealthScreen extends StatelessWidget {
                     children: [
                       Expanded(
                         child: BentoCard(
+                          onTap: () => _showLogBpDialog(context, firestore, mother.uid, today.systolicBp, today.diastolicBp),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -163,6 +167,8 @@ class HealthScreen extends StatelessWidget {
                                   Icon(Icons.favorite_border, color: AppColors.error, size: 18),
                                   const SizedBox(width: 6),
                                   Text(l10n.bloodPressureTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                                  const Spacer(),
+                                  Icon(Icons.add, size: 16, color: AppColors.primary),
                                 ],
                               ),
                               const SizedBox(height: 8),
@@ -182,6 +188,7 @@ class HealthScreen extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: BentoCard(
+                          onTap: () => _showLogSugarDialog(context, firestore, mother.uid, today.bloodSugar),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -190,6 +197,8 @@ class HealthScreen extends StatelessWidget {
                                   Icon(Icons.bloodtype_outlined, color: AppColors.tertiary, size: 18),
                                   const SizedBox(width: 6),
                                   Text(l10n.bloodSugarTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                                  const Spacer(),
+                                  Icon(Icons.add, size: 16, color: AppColors.primary),
                                 ],
                               ),
                               const SizedBox(height: 8),
@@ -325,6 +334,7 @@ class HealthScreen extends StatelessWidget {
                           bloodType: bloodTypeController.text.trim().isEmpty ? current.bloodType : bloodTypeController.text.trim(),
                           allergies: allergiesController.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList(),
                           babySizeComparison: babySizeController.text.trim().isEmpty ? current.babySizeComparison : babySizeController.text.trim(),
+                          isHighRisk: current.isHighRisk,
                         ),
                       );
                       Navigator.of(ctx).pop();
@@ -337,6 +347,103 @@ class HealthScreen extends StatelessWidget {
           );
         });
       },
+    );
+  }
+
+  void _showLogWeightDialog(BuildContext context, FirestoreService firestore, String uid, double? current) {
+    final controller = TextEditingController(text: current?.toStringAsFixed(1) ?? '');
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Log weight'),
+        content: TextField(
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(labelText: 'Weight (kg)', suffixText: 'kg'),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              final v = double.tryParse(controller.text.trim());
+              if (v == null || v <= 0) return;
+              firestore.logWeight(uid, v);
+              Navigator.pop(ctx);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLogBpDialog(BuildContext context, FirestoreService firestore, String uid, int? systolic, int? diastolic) {
+    final sysController = TextEditingController(text: systolic?.toString() ?? '');
+    final diaController = TextEditingController(text: diastolic?.toString() ?? '');
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Log blood pressure'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: sysController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Systolic', suffixText: 'mmHg'),
+              autofocus: true,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: diaController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Diastolic', suffixText: 'mmHg'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              final s = int.tryParse(sysController.text.trim());
+              final d = int.tryParse(diaController.text.trim());
+              if (s == null || d == null || s <= 0 || d <= 0) return;
+              firestore.logBloodPressure(uid, systolic: s, diastolic: d);
+              Navigator.pop(ctx);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLogSugarDialog(BuildContext context, FirestoreService firestore, String uid, int? current) {
+    final controller = TextEditingController(text: current?.toString() ?? '');
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Log blood sugar'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(labelText: 'Blood sugar', suffixText: 'mg/dL'),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              final v = int.tryParse(controller.text.trim());
+              if (v == null || v <= 0) return;
+              firestore.logBloodSugar(uid, v);
+              Navigator.pop(ctx);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
     );
   }
 }

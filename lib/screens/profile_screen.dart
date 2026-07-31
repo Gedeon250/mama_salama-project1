@@ -166,6 +166,94 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Future<void> _showEmergencyContactsSheet(BuildContext context, AppUser user) async {
+    final contacts = List<EmergencyContact>.from(user.emergencyContacts);
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl))),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) {
+          return Padding(
+            padding: EdgeInsets.only(
+              left: AppSpacing.edgeMargin,
+              right: AppSpacing.edgeMargin,
+              top: AppSpacing.md,
+              bottom: MediaQuery.of(sheetContext).viewInsets.bottom + AppSpacing.md,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Emergency Contacts', style: Theme.of(sheetContext).textTheme.headlineSmall),
+                const SizedBox(height: 12),
+                if (contacts.isEmpty)
+                  Text('No contacts yet.', style: TextStyle(color: AppColors.secondary)),
+                ...contacts.asMap().entries.map((e) {
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(e.value.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: Text(e.value.phone),
+                    trailing: IconButton(
+                      icon: Icon(Icons.delete_outline, color: AppColors.error),
+                      onPressed: () => setSheetState(() => contacts.removeAt(e.key)),
+                    ),
+                  );
+                }),
+                TextButton.icon(
+                  onPressed: () async {
+                    final nameController = TextEditingController();
+                    final phoneController = TextEditingController();
+                    final added = await showDialog<EmergencyContact>(
+                      context: sheetContext,
+                      builder: (dialogContext) => AlertDialog(
+                        title: const Text('Add contact'),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Name'), autofocus: true),
+                            const SizedBox(height: 12),
+                            TextField(controller: phoneController, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Phone')),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+                          ElevatedButton(
+                            onPressed: () {
+                              final name = nameController.text.trim();
+                              final phone = phoneController.text.trim();
+                              if (name.isEmpty || phone.isEmpty) return;
+                              Navigator.pop(dialogContext, EmergencyContact(name: name, phone: phone));
+                            },
+                            child: const Text('Add'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (added != null) setSheetState(() => contacts.add(added));
+                  },
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add contact'),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      await _firestore.updateUserProfile(user.uid, emergencyContacts: contacts);
+                      if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                    },
+                    child: const Text('Save'),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   void _showLanguagePicker(BuildContext context) {
     final localeProvider = context.read<LocaleProvider>();
     showModalBottomSheet(
@@ -362,7 +450,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const Divider(height: 1),
                 if (isMother) ...[
-                  _tile(Icons.emergency_outlined, 'Emergency Contacts', '${context.watch<AppData>().profile.emergencyContactsCount} contacts'),
+                  _tile(
+                    Icons.emergency_outlined,
+                    'Emergency Contacts',
+                    user.emergencyContacts.isEmpty
+                        ? 'None saved'
+                        : '${user.emergencyContacts.length} contact${user.emergencyContacts.length == 1 ? '' : 's'}',
+                    onTap: () => _showEmergencyContactsSheet(context, user),
+                  ),
                   const Divider(height: 1),
                   _tile(Icons.accessibility_new_outlined, 'Accessibility', 'Large text, screen reader'),
                   const Divider(height: 1),

@@ -181,7 +181,12 @@ class _RequestCard extends StatelessWidget {
               const Spacer(),
               if (showClaim)
                 ElevatedButton(
-                  onPressed: () => firestore.assignRequest(requestId: request.id, chwId: me.uid, chwName: me.name),
+                  onPressed: () => firestore.assignRequest(
+                    requestId: request.id,
+                    motherId: request.motherId,
+                    chwId: me.uid,
+                    chwName: me.name,
+                  ),
                   child: const Text('Claim'),
                 )
               else if (request.status != RequestStatus.resolved) ...[
@@ -234,7 +239,7 @@ class _MyMothersTab extends StatelessWidget {
           return const Center(
             child: Padding(
               padding: EdgeInsets.all(24),
-              child: EmptyHint(text: 'No mothers assigned to you yet. Claim a request to get started.'),
+              child: EmptyHint(text: 'No mothers assigned to you yet. Claim a help request or wait for an admin to assign you.'),
             ),
           );
         }
