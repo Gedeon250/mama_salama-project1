@@ -23,10 +23,13 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     if (!mounted) return;
     setState(() => _busy = false);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Verification email sent — check your inbox.')),
+      const SnackBar(
+        content: Text('Verification email sent — check your inbox.'),
+      ),
     );
   }
 
+  ///Refresh the user's verification status before allowing access to the application
   Future<void> _checkVerified() async {
     setState(() => _busy = true);
     final session = context.read<SessionProvider>();
@@ -35,14 +38,17 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     setState(() => _busy = false);
     if (!confirmed) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Still not verified — check your inbox for the link.")),
+        const SnackBar(
+          content: Text("Still not verified — check your inbox for the link."),
+        ),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final email = context.watch<SessionProvider>().currentUser?.email ?? 'your email';
+    final email =
+        context.watch<SessionProvider>().currentUser?.email ?? 'your email';
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -51,9 +57,16 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.mark_email_unread_outlined, size: 72, color: AppColors.primary),
+                Icon(
+                  Icons.mark_email_unread_outlined,
+                  size: 72,
+                  color: AppColors.primary,
+                ),
                 const SizedBox(height: 16),
-                Text('Verify your email', style: Theme.of(context).textTheme.headlineSmall),
+                Text(
+                  'Verify your email',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
                 const SizedBox(height: 8),
                 Text(
                   'We sent a verification link to $email. Click it, then come back and tap "I\'ve verified".',
@@ -66,7 +79,14 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                   child: ElevatedButton(
                     onPressed: _busy ? null : _checkVerified,
                     child: _busy
-                        ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
                         : const Text("I've verified — Continue"),
                   ),
                 ),
@@ -77,7 +97,10 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                 ),
                 TextButton(
                   onPressed: () => context.read<SessionProvider>().signOut(),
-                  child: Text('Sign Out', style: TextStyle(color: AppColors.error)),
+                  child: Text(
+                    'Sign Out',
+                    style: TextStyle(color: AppColors.error),
+                  ),
                 ),
               ],
             ),
