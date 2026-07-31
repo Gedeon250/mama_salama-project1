@@ -13,6 +13,12 @@ class SessionProvider extends ChangeNotifier {
   final AuthService _authService;
   StreamSubscription? _authSub;
   StreamSubscription? _userSub;
+  Timer? _profileWaitTimer;
+
+  /// True while [register] / [signUpWithGoogle] is creating the Auth user
+  /// and then writing `users/{uid}`. During that window `watchAppUser` can
+  /// briefly emit null; we must not treat that as a missing profile.
+  bool _expectingNewProfile = false;
 
   SessionProvider(this._authService) {
     _authSub = _authService.authStateChanges.listen(_onAuthChanged);
@@ -30,17 +36,66 @@ class SessionProvider extends ChangeNotifier {
 
   void _onAuthChanged(fbUser) {
     _userSub?.cancel();
+    _profileWaitTimer?.cancel();
+    _profileWaitTimer = null;
     if (fbUser == null) {
       currentUser = null;
       status = SessionStatus.signedOut;
       notifyListeners();
       return;
     }
-    _userSub = _authService.watchAppUser(fbUser.uid).listen((appUser) {
-      currentUser = appUser;
-      status = appUser == null ? SessionStatus.loading : SessionStatus.signedIn;
-      notifyListeners();
-    });
+    status = SessionStatus.loading;
+    notifyListeners();
+    _userSub = _authService.watchAppUser(fbUser.uid).listen(
+      (appUser) {
+        if (appUser == null) {
+          currentUser = null;
+          if (_expectingNewProfile) {
+            // Signup is still writing the profile doc — keep loading, but
+            // don't wait forever if the write never lands.
+            _profileWaitTimer ??= Timer(const Duration(seconds: 15), () {
+              unawaited(_failMissingProfile());
+            });
+            notifyListeners();
+            return;
+          }
+          // Persisted Auth session (or deleted profile) with no Firestore
+          // doc — previously left AuthGate on the loading spinner forever.
+          unawaited(_failMissingProfile());
+          return;
+        }
+        _profileWaitTimer?.cancel();
+        _profileWaitTimer = null;
+        _expectingNewProfile = false;
+        currentUser = appUser;
+        status = SessionStatus.signedIn;
+        notifyListeners();
+      },
+      onError: (Object e, StackTrace _) {
+        debugPrint('watchAppUser error: $e');
+        unawaited(_failMissingProfile(cause: e));
+      },
+    );
+  }
+
+  /// Clears the stuck-loading path: surface a friendly error, flip to
+  /// signedOut so AuthGate shows login, then sign out of Auth so the next
+  /// launch doesn't restore an orphaned session.
+  Future<void> _failMissingProfile({Object? cause}) async {
+    _profileWaitTimer?.cancel();
+    _profileWaitTimer = null;
+    _userSub?.cancel();
+    _userSub = null;
+    _expectingNewProfile = false;
+    currentUser = null;
+    error = _friendlyError(cause ?? NoProfileFoundException());
+    status = SessionStatus.signedOut;
+    notifyListeners();
+    try {
+      await _authService.signOut();
+    } catch (e) {
+      debugPrint('signOut after missing profile failed: $e');
+    }
   }
 
   Future<bool> signIn(String email, String password) async {
@@ -63,10 +118,12 @@ class SessionProvider extends ChangeNotifier {
     String? phone,
   }) async {
     error = null;
+    _expectingNewProfile = true;
     try {
       await _authService.registerAccount(name: name, email: email, password: password, role: role, phone: phone);
       return true;
     } catch (e) {
+      _expectingNewProfile = false;
       error = _friendlyError(e);
       notifyListeners();
       return false;
@@ -87,10 +144,12 @@ class SessionProvider extends ChangeNotifier {
 
   Future<bool> signUpWithGoogle(UserRole role) async {
     error = null;
+    _expectingNewProfile = true;
     try {
       await _authService.signUpWithGoogle(role);
       return true;
     } catch (e) {
+      _expectingNewProfile = false;
       error = _friendlyError(e);
       notifyListeners();
       return false;
@@ -99,7 +158,7 @@ class SessionProvider extends ChangeNotifier {
 
   Future<void> signOut() => _authService.signOut();
 
-  Future<void> resendVerificationEmail() => _authService.resendVerificationEmail();
+  Future<bool> resendVerificationEmail() => _authService.resendVerificationEmail();
 
   /// Call after the user says they've clicked the link in their inbox.
   /// For a password account this is a real check — it reloads the Firebase
@@ -130,8 +189,16 @@ class SessionProvider extends ChangeNotifier {
   }
 
   String _friendlyError(Object e) {
+    // Surfaced messages are deliberately generic; the raw error (with its
+    // Firebase error code) is logged here so it's visible in `flutter run`
+    // output / device logs when diagnosing a report like "login doesn't
+    // work" that the friendly copy alone can't distinguish.
+    debugPrint('Auth error: $e');
     if (e is NoAccountForGoogleUserException) {
       return 'No account found for that Google sign-in. Please use "Register" first.';
+    }
+    if (e is NoProfileFoundException) {
+      return 'This account has no profile set up in the app. Please register, or contact support.';
     }
     final msg = e.toString();
     if (msg.contains('google-sign-in-cancelled')) return "Google sign-in was cancelled.";
@@ -146,6 +213,7 @@ class SessionProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _profileWaitTimer?.cancel();
     _authSub?.cancel();
     _userSub?.cancel();
     super.dispose();

@@ -49,9 +49,17 @@ service cloud.firestore {
       );
       // Anyone can create their own account doc on signup.
       allow create: if signedIn() && request.auth.uid == uid;
-      // A user can update their own doc; an admin can update anyone's
-      // (used for assigning a CHW to a mother).
-      allow update: if signedIn() && (request.auth.uid == uid || isAdmin());
+      // A user can update their own doc, but not their own `role` — that
+      // field only moves via an admin action (assigning a CHW to a mother
+      // is a separate `assignedChwId` field on the mother's own doc, not
+      // `role`, so this doesn't block that). Without this restriction any
+      // signed-in user (in particular a chwApplicant awaiting review)
+      // could just self-write `role: 'chw'` and skip the whole approval
+      // flow in ChwApplicationScreen / AdminShell.
+      allow update: if signedIn() && (
+        (request.auth.uid == uid && request.resource.data.role == resource.data.role) ||
+        isAdmin()
+      );
       allow delete: if isAdmin();
 
       // ---- users/{uid}/vitals/{yyyy-MM-dd} : DailyVitals docs ----

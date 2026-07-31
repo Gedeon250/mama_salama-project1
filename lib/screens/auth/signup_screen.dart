@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../../providers/session_provider.dart';
 import '../../models/user_models.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/common.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -85,31 +84,12 @@ class _SignupScreenState extends State<SignupScreen> {
                     child: _RoleCard(
                       icon: Icons.volunteer_activism_outlined,
                       label: 'Health Worker\n(Volunteer)',
-                      selected: _role == UserRole.chw,
-                      onTap: () => setState(() => _role = UserRole.chw),
+                      selected: _role == UserRole.chwApplicant,
+                      onTap: () => setState(() => _role = UserRole.chwApplicant),
                     ),
                   ),
                 ],
               ),
-              if (_role == UserRole.chw) ...[
-                const SizedBox(height: 10),
-                BentoCard(
-                  color: AppColors.onTertiaryContainer,
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline, color: AppColors.primary, size: 18),
-                      const SizedBox(width: 8),
-                      const Expanded(
-                        child: Text(
-                          'Health Worker accounts should be reviewed by an Admin before being trusted with '
-                          'mother assignments in production — this MVP creates the account immediately.',
-                          style: TextStyle(fontSize: 12),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
               const SizedBox(height: 20),
               TextFormField(
                 controller: _nameController,

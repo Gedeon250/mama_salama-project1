@@ -54,8 +54,53 @@ class FirestoreService {
     return AppUser.fromDoc(doc.id, doc.data()!);
   }
 
+  Stream<AppUser?> watchUserById(String uid) {
+    return _users.doc(uid).snapshots().map((doc) {
+      if (!doc.exists) return null;
+      return AppUser.fromDoc(doc.id, doc.data()!);
+    });
+  }
+
   Future<void> assignChwToMother({required String motherId, required String chwId}) {
     return _users.doc(motherId).set({'assignedChwId': chwId}, SetOptions(merge: true));
+  }
+
+  Future<void> updateUserProfile(String uid, {String? name, String? phone, String? photoUrl}) {
+    return _users.doc(uid).set({
+      if (name != null) 'name': name,
+      if (phone != null) 'phone': phone,
+      if (photoUrl != null) 'photoUrl': photoUrl,
+    }, SetOptions(merge: true));
+  }
+
+  // ----- CHW applications (see UserRole.chwApplicant / ChwApplication) -----
+
+  Stream<List<AppUser>> watchChwApplications() {
+    return _users.where('role', isEqualTo: roleToString(UserRole.chwApplicant)).snapshots().map(
+          (snap) => snap.docs.map((d) => AppUser.fromDoc(d.id, d.data())).toList(),
+        );
+  }
+
+  Future<void> submitChwApplication(String uid, ChwApplication application) {
+    return _users.doc(uid).set({'chwApplication': application.toMap()}, SetOptions(merge: true));
+  }
+
+  Future<void> approveChwApplication(String uid) {
+    return _users.doc(uid).set({'role': roleToString(UserRole.chw)}, SetOptions(merge: true));
+  }
+
+  Future<void> requestMoreChwInfo(String uid, String note) {
+    return _users.doc(uid).update({
+      'chwApplication.status': ChwApplicationStatus.needsMoreInfo.name,
+      'chwApplication.adminNote': note,
+    });
+  }
+
+  Future<void> rejectChwApplication(String uid, String? note) {
+    return _users.doc(uid).update({
+      'chwApplication.status': ChwApplicationStatus.rejected.name,
+      if (note != null) 'chwApplication.adminNote': note,
+    });
   }
 
   /// Count of mothers currently flagged `pregnancyProfile.isHighRisk` — feeds
@@ -304,17 +349,40 @@ class FirestoreService {
     required String threadId,
     required String senderId,
     required String senderName,
-    required String text,
+    String text = '',
+    String? attachmentUrl,
+    ChatAttachmentType? attachmentType,
+    String? attachmentName,
   }) async {
+    final trimmed = text.trim();
+    final hasAttachment = attachmentUrl != null && attachmentUrl.isNotEmpty;
+    if (trimmed.isEmpty && !hasAttachment) return;
+
+    String preview = trimmed;
+    if (preview.isEmpty && hasAttachment) {
+      preview = attachmentType == ChatAttachmentType.image
+          ? '📷 Photo'
+          : '📎 ${attachmentName ?? 'Attachment'}';
+    }
+
     final threadRef = _db.collection('chatThreads').doc(threadId);
     await threadRef.set({
-      'lastMessage': text,
+      'lastMessage': preview,
       'lastSenderId': senderId,
       'updatedAt': FieldValue.serverTimestamp(),
       'participants': threadId.split('_'),
     }, SetOptions(merge: true));
     await threadRef.collection('messages').add(
-          ChatMessage(id: '', senderId: senderId, senderName: senderName, text: text, sentAt: DateTime.now()).toDoc(),
+          ChatMessage(
+            id: '',
+            senderId: senderId,
+            senderName: senderName,
+            text: trimmed,
+            sentAt: DateTime.now(),
+            attachmentUrl: attachmentUrl,
+            attachmentType: attachmentType,
+            attachmentName: attachmentName,
+          ).toDoc(),
         );
   }
 

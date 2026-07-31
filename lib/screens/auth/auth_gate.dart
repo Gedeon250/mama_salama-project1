@@ -8,9 +8,8 @@ import '../admin/admin_shell.dart';
 import '../hospital/hospital_shell.dart';
 import 'login_screen.dart';
 import 'verify_email_screen.dart';
+import 'chw_application_screen.dart';
 
-/// Top-level router: watches SessionProvider and shows the login flow,
-/// a loading spinner, or the shell that matches the signed-in user's role.
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
@@ -35,6 +34,8 @@ class AuthGate extends StatelessWidget {
             return const AdminShell();
           case UserRole.hospital:
             return const HospitalShell();
+          case UserRole.chwApplicant:
+            return const ChwApplicationScreen();
         }
     }
   }

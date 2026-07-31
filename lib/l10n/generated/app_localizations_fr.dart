@@ -14,7 +14,8 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get healthSnapshotSubtitle => 'Vous vous portez bien. Voici un aperçu de votre santé.';
+  String get healthSnapshotSubtitle =>
+      'Vous vous portez bien. Voici un aperçu de votre santé.';
 
   @override
   String get quickActionsTitle => 'Actions Rapides';
@@ -44,7 +45,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get messageButton => 'Message';
 
   @override
-  String get noHealthWorkerAssigned => 'Vous n\'avez pas encore d\'agent de santé assigné. Envoyez une demande ci-dessous et un administrateur vous mettra en relation avec un agent.';
+  String get noHealthWorkerAssigned =>
+      'Vous n\'avez pas encore d\'agent de santé assigné. Envoyez une demande ci-dessous et un administrateur vous mettra en relation avec un agent.';
 
   @override
   String get describeHelpHint => 'Décrivez l\'aide dont vous avez besoin...';
@@ -53,7 +55,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get requestHelpButton => 'Demander de l\'Aide';
 
   @override
-  String get helpRequestSentSnackbar => 'Envoyé au tableau de bord de l\'administrateur — un agent de santé vous contactera.';
+  String get helpRequestSentSnackbar =>
+      'Envoyé au tableau de bord de l\'administrateur — un agent de santé vous contactera.';
 
   @override
   String get messagesTitle => 'Messages';
@@ -103,13 +106,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get todaysHealthTipTitle => 'Conseil Santé du Jour';
 
   @override
-  String get healthTipText => 'Manger des aliments riches en fer comme les haricots et les légumes verts avec de la vitamine C aide votre corps à mieux absorber le fer.';
+  String get healthTipText =>
+      'Manger des aliments riches en fer comme les haricots et les légumes verts avec de la vitamine C aide votre corps à mieux absorber le fer.';
 
   @override
   String get aiAssistantTitle => 'Assistant IA MamaSalama';
 
   @override
-  String get aiAssistantBody => 'Ceci est un espace réservé pour l\'assistant de santé IA décrit dans le PRD (questions sur la grossesse, triage des symptômes, conseils nutritionnels, et traduction en kinyarwanda / anglais / swahili / français). Connectez-le au fournisseur LLM de votre choix lorsque le backend sera prêt.';
+  String get aiAssistantBody =>
+      'Ceci est un espace réservé pour l\'assistant de santé IA décrit dans le PRD (questions sur la grossesse, triage des symptômes, conseils nutritionnels, et traduction en kinyarwanda / anglais / swahili / français). Connectez-le au fournisseur LLM de votre choix lorsque le backend sera prêt.';
 
   @override
   String get gotIt => 'Compris';
@@ -186,19 +191,22 @@ class AppLocalizationsFr extends AppLocalizations {
   String get medicalRecordsTitle => 'Dossiers Médicaux';
 
   @override
-  String get medicalRecordsSubtitle => 'Notes de visite, échographies, historique d\'accouchement';
+  String get medicalRecordsSubtitle =>
+      'Notes de visite, échographies, historique d\'accouchement';
 
   @override
   String get labResultsTitle => 'Résultats de Laboratoire';
 
   @override
-  String get labResultsSubtitle => 'Analyses de sang, glycémie, et résultats de dépistage';
+  String get labResultsSubtitle =>
+      'Analyses de sang, glycémie, et résultats de dépistage';
 
   @override
   String get vaccinationsTitle => 'Vaccinations';
 
   @override
-  String get vaccinationsSubtitle => 'Calendrier de vaccination de la mère et du bébé';
+  String get vaccinationsSubtitle =>
+      'Calendrier de vaccination de la mère et du bébé';
 
   @override
   String get editPregnancyInfoTitle => 'Modifier les Infos de Grossesse';
@@ -290,10 +298,12 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get sosStep1 => 'Envoi de votre position à l\'hôpital le plus proche...';
+  String get sosStep1 =>
+      'Envoi de votre position à l\'hôpital le plus proche...';
 
   @override
-  String get sosStep2 => 'Notification de votre agent de santé communautaire assigné...';
+  String get sosStep2 =>
+      'Notification de votre agent de santé communautaire assigné...';
 
   @override
   String get sosStep3 => 'Alerte de vos contacts d\'urgence...';

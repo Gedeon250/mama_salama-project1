@@ -14,7 +14,8 @@ class AppLocalizationsSw extends AppLocalizations {
   }
 
   @override
-  String get healthSnapshotSubtitle => 'Unaendelea vizuri. Hii hapa muhtasari wa afya yako.';
+  String get healthSnapshotSubtitle =>
+      'Unaendelea vizuri. Hii hapa muhtasari wa afya yako.';
 
   @override
   String get quickActionsTitle => 'Vitendo vya Haraka';
@@ -44,7 +45,8 @@ class AppLocalizationsSw extends AppLocalizations {
   String get messageButton => 'Tuma Ujumbe';
 
   @override
-  String get noHealthWorkerAssigned => 'Bado hujapangiwa mfanyakazi wa afya. Tuma ombi hapa chini na msimamizi atakuunganisha na mmoja.';
+  String get noHealthWorkerAssigned =>
+      'Bado hujapangiwa mfanyakazi wa afya. Tuma ombi hapa chini na msimamizi atakuunganisha na mmoja.';
 
   @override
   String get describeHelpHint => 'Eleza msaada unaohitaji...';
@@ -53,7 +55,8 @@ class AppLocalizationsSw extends AppLocalizations {
   String get requestHelpButton => 'Omba Msaada';
 
   @override
-  String get helpRequestSentSnackbar => 'Imetumwa kwa dashibodi ya msimamizi — mfanyakazi wa afya atafuatilia.';
+  String get helpRequestSentSnackbar =>
+      'Imetumwa kwa dashibodi ya msimamizi — mfanyakazi wa afya atafuatilia.';
 
   @override
   String get messagesTitle => 'Ujumbe';
@@ -103,13 +106,15 @@ class AppLocalizationsSw extends AppLocalizations {
   String get todaysHealthTipTitle => 'Kidokezo cha Afya cha Leo';
 
   @override
-  String get healthTipText => 'Kula vyakula vyenye madini ya chuma kama maharage na mboga za majani pamoja na vitamini C husaidia mwili kunyonya chuma zaidi.';
+  String get healthTipText =>
+      'Kula vyakula vyenye madini ya chuma kama maharage na mboga za majani pamoja na vitamini C husaidia mwili kunyonya chuma zaidi.';
 
   @override
   String get aiAssistantTitle => 'Msaidizi wa AI wa MamaSalama';
 
   @override
-  String get aiAssistantBody => 'Hii ni nafasi ya muda ya msaidizi wa afya wa AI ulioelezwa katika PRD (maswali ya ujauzito, uchunguzi wa dalili, ushauri wa lishe, na tafsiri ya Kinyarwanda / Kiingereza / Kiswahili / Kifaransa). Unganisha na mtoa huduma wa LLM utakayemchagua backend itakapokuwa tayari.';
+  String get aiAssistantBody =>
+      'Hii ni nafasi ya muda ya msaidizi wa afya wa AI ulioelezwa katika PRD (maswali ya ujauzito, uchunguzi wa dalili, ushauri wa lishe, na tafsiri ya Kinyarwanda / Kiingereza / Kiswahili / Kifaransa). Unganisha na mtoa huduma wa LLM utakayemchagua backend itakapokuwa tayari.';
 
   @override
   String get gotIt => 'Nimeelewa';
@@ -186,13 +191,15 @@ class AppLocalizationsSw extends AppLocalizations {
   String get medicalRecordsTitle => 'Rekodi za Matibabu';
 
   @override
-  String get medicalRecordsSubtitle => 'Maelezo ya ziara, ultrasound, historia ya kujifungua';
+  String get medicalRecordsSubtitle =>
+      'Maelezo ya ziara, ultrasound, historia ya kujifungua';
 
   @override
   String get labResultsTitle => 'Matokeo ya Maabara';
 
   @override
-  String get labResultsSubtitle => 'Uchunguzi wa damu, sukari, na vipimo vingine';
+  String get labResultsSubtitle =>
+      'Uchunguzi wa damu, sukari, na vipimo vingine';
 
   @override
   String get vaccinationsTitle => 'Chanjo';
