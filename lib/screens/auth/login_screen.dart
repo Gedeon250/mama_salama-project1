@@ -19,15 +19,21 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _submitting = false;
 
+  ///Handles user authentication and displays an error message if sign-in fails.
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _submitting = true);
     final session = context.read<SessionProvider>();
-    final ok = await session.signIn(_emailController.text.trim(), _passwordController.text);
+    final ok = await session.signIn(
+      _emailController.text.trim(),
+      _passwordController.text,
+    );
     if (!mounted) return;
     setState(() => _submitting = false);
     if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(session.error ?? 'Sign in failed')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(session.error ?? 'Sign in failed')),
+      );
     }
   }
 
@@ -38,7 +44,9 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     setState(() => _submitting = false);
     if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(session.error ?? 'Google sign-in failed')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(session.error ?? 'Google sign-in failed')),
+      );
     }
   }
 
@@ -55,19 +63,33 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 32),
-                  Icon(Icons.pregnant_woman, color: AppColors.primary, size: 56),
+                  Icon(
+                    Icons.pregnant_woman,
+                    color: AppColors.primary,
+                    size: 56,
+                  ),
                   const SizedBox(height: 12),
-                  Text('MamaSalama', textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineLarge),
+                  Text(
+                    'MamaSalama',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headlineLarge,
+                  ),
                   const SizedBox(height: 4),
-                  Text('Sign in to continue', textAlign: TextAlign.center, style: TextStyle(color: AppColors.secondary)),
+                  Text(
+                    'Sign in to continue',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.secondary),
+                  ),
                   const SizedBox(height: 32),
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(labelText: 'Email'),
                     validator: (v) {
-                      if (v == null || v.trim().isEmpty) return 'Enter your email';
-                      if (!_emailFormat.hasMatch(v.trim())) return 'Enter a valid email address';
+                      if (v == null || v.trim().isEmpty)
+                        return 'Enter your email';
+                      if (!_emailFormat.hasMatch(v.trim()))
+                        return 'Enter a valid email address';
                       return null;
                     },
                   ),
@@ -86,7 +108,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   ElevatedButton(
                     onPressed: _submitting ? null : _submit,
                     child: _submitting
-                        ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
                         : const Text('Sign In'),
                   ),
                   const SizedBox(height: 20),
@@ -95,7 +124,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       const Expanded(child: Divider()),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Text('OR', style: TextStyle(color: AppColors.secondary, fontSize: 12)),
+                        child: Text(
+                          'OR',
+                          style: TextStyle(
+                            color: AppColors.secondary,
+                            fontSize: 12,
+                          ),
+                        ),
                       ),
                       const Expanded(child: Divider()),
                     ],
@@ -108,7 +143,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 12),
                   TextButton(
-                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SignupScreen())),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const SignupScreen()),
+                    ),
                     child: const Text("Don't have an account? Register"),
                   ),
                 ],
