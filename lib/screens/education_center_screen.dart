@@ -1,9 +1,9 @@
+// Ketsia - education center screen update
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/user_models.dart';
 import '../providers/locale_provider.dart';
 import '../services/firestore_service.dart';
-import '../l10n/app_strings.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import '../widgets/audio_message_player.dart';
@@ -56,6 +56,7 @@ class _EducationCenterScreenState extends State<EducationCenterScreen> {
           final items = snapshot.data!
               .where((e) => _query.isEmpty || e.title.toLowerCase().contains(_query.toLowerCase()) || e.category.toLowerCase().contains(_query.toLowerCase()))
               .toList();
+          final featured = items.isEmpty ? null : items.firstWhere((e) => e.format == EducationFormat.video, orElse: () => items.first);
 
           return ListView(
             padding: const EdgeInsets.fromLTRB(
@@ -63,22 +64,20 @@ class _EducationCenterScreenState extends State<EducationCenterScreen> {
             ),
             children: [
           Consumer<LocaleProvider>(
-            builder: (context, locale, _) => Row(
-              children: [
-                const Icon(Icons.language, size: 18, color: AppColors.secondary),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    '${context.tr(StrKey.langEnglish)} | ${context.tr(StrKey.langKinyarwanda)}',
-                    style: const TextStyle(fontSize: 12, color: AppColors.secondary),
+            builder: (context, localeProvider, _) {
+              return Row(
+                children: [
+                  Icon(Icons.language, size: 18, color: AppColors.secondary),
+                  const SizedBox(width: 6),
+                  Text('EN | RW | SW | FR', style: TextStyle(fontSize: 12, color: AppColors.secondary)),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: localeProvider.cycleLocale,
+                    child: Text('Change (${localeProvider.locale.languageCode.toUpperCase()})'),
                   ),
-                ),
-                TextButton(
-                  onPressed: locale.toggle,
-                  child: Text('${context.tr(StrKey.eduChangeLanguage)} (${locale.isKinyarwanda ? 'RW' : 'EN'})'),
-                ),
-              ],
-            ),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 8),
           TextField(
@@ -90,38 +89,48 @@ class _EducationCenterScreenState extends State<EducationCenterScreen> {
           ),
           const SizedBox(height: AppSpacing.md),
 
-          const SectionHeader(title: 'Featured Lesson'),
-          const SizedBox(height: 12),
-          BentoCard(
-            padding: EdgeInsets.zero,
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const VideoLessonScreen())),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  height: 160,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: AppColors.onTertiaryContainer,
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                  ),
+          if (featured != null) ...[
+            const SectionHeader(title: 'Featured Lesson'),
+            const SizedBox(height: 12),
+            BentoCard(
+              padding: EdgeInsets.zero,
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VideoLessonScreen(item: featured))),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      height: 160,
+                      width: double.infinity,
+                      child: featured.mediaUrl != null
+                          ? Image.network(
+                              featured.mediaUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(color: AppColors.onTertiaryContainer),
+                            )
+                          : Container(color: AppColors.onTertiaryContainer),
+                    ),
+                    Container(height: 160, color: Colors.black26),
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                      child: const Icon(Icons.play_arrow, color: Colors.white, size: 28),
+                    ),
+                    Positioned(
+                      left: 16,
+                      bottom: 12,
+                      right: 16,
+                      child: Text(featured.title,
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontSize: 16, color: Colors.white)),
+                    ),
+                  ],
                 ),
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                  child: const Icon(Icons.play_arrow, color: Colors.white, size: 28),
-                ),
-                Positioned(
-                  left: 16,
-                  bottom: 12,
-                  child: Text('Nutrition in Your Second Trimester',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontSize: 16)),
-                ),
-              ],
+              ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.md),
+          ],
 
           Row(
             children: [
@@ -155,18 +164,34 @@ class _EducationCenterScreenState extends State<EducationCenterScreen> {
           ...items.map((item) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: BentoCard(
-                  onTap: item.format == EducationFormat.video
-                      ? () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const VideoLessonScreen()))
-                      : null,
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VideoLessonScreen(item: item))),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(color: AppColors.onTertiaryContainer, borderRadius: BorderRadius.circular(AppRadius.md)),
-                            child: Icon(_formatIcon(item.format), color: AppColors.primary),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            child: item.mediaUrl != null
+                                ? Image.network(
+                                    item.mediaUrl!,
+                                    width: 48,
+                                    height: 48,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Container(
+                                      width: 48,
+                                      height: 48,
+                                      color: AppColors.onTertiaryContainer,
+                                      child: Icon(_formatIcon(item.format), color: AppColors.primary),
+                                    ),
+                                  )
+                                : Container(
+                                    width: 48,
+                                    height: 48,
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(color: AppColors.onTertiaryContainer, borderRadius: BorderRadius.circular(AppRadius.md)),
+                                    child: Icon(_formatIcon(item.format), color: AppColors.primary),
+                                  ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -174,13 +199,13 @@ class _EducationCenterScreenState extends State<EducationCenterScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(item.title, style: const TextStyle(fontWeight: FontWeight.w700)),
-                                Text(item.description, style: const TextStyle(fontSize: 12, color: AppColors.secondary), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                Text(item.description, style: TextStyle(fontSize: 12, color: AppColors.secondary), maxLines: 2, overflow: TextOverflow.ellipsis),
                                 const SizedBox(height: 4),
                                 Row(
                                   children: [
                                     PillChip(label: item.category),
                                     const SizedBox(width: 6),
-                                    Text(item.durationOrLength, style: const TextStyle(fontSize: 11, color: AppColors.outline)),
+                                    Text(item.durationOrLength, style: TextStyle(fontSize: 11, color: AppColors.outline)),
                                   ],
                                 ),
                               ],

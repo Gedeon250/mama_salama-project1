@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart' as intl;
+import '../l10n/generated/app_localizations.dart';
 import '../providers/app_data.dart';
 import '../providers/session_provider.dart';
 import '../models/user_models.dart';
@@ -8,6 +9,7 @@ import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import '../widgets/chat_view.dart';
+import '../widgets/user_avatar.dart';
 import 'appointments_screen.dart';
 import 'emergency_sos_screen.dart';
 import 'medical_records_screen.dart';
@@ -20,6 +22,7 @@ class DashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final data = context.watch<AppData>();
     final mother = context.watch<SessionProvider>().currentUser!;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: const MamaAppBar(),
@@ -28,9 +31,9 @@ class DashboardScreen extends StatelessWidget {
           AppSpacing.edgeMargin, AppSpacing.xs, AppSpacing.edgeMargin, AppSpacing.xl,
         ),
         children: [
-          Text('Hello, ${mother.name}!', style: Theme.of(context).textTheme.headlineLarge),
+          Text(l10n.helloName(mother.name), style: Theme.of(context).textTheme.headlineLarge),
           const SizedBox(height: 4),
-          Text("You're doing great. Here's your health snapshot.",
+          Text(l10n.healthSnapshotSubtitle,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.secondary)),
           const SizedBox(height: AppSpacing.md),
 
@@ -39,7 +42,7 @@ class DashboardScreen extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
 
           // Quick actions grid
-          const SectionHeader(title: 'Quick Actions'),
+          SectionHeader(title: l10n.quickActionsTitle),
           const SizedBox(height: 12),
           GridView.count(
             crossAxisCount: 4,
@@ -50,7 +53,7 @@ class DashboardScreen extends StatelessWidget {
             children: [
               _QuickAction(
                 icon: Icons.emergency,
-                label: 'SOS',
+                label: l10n.sosLabel,
                 color: AppColors.error,
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const EmergencySosScreen()),
@@ -58,7 +61,7 @@ class DashboardScreen extends StatelessWidget {
               ),
               _QuickAction(
                 icon: Icons.folder_shared_outlined,
-                label: 'Records',
+                label: l10n.recordsLabel,
                 color: AppColors.primary,
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const MedicalRecordsScreen()),
@@ -66,7 +69,7 @@ class DashboardScreen extends StatelessWidget {
               ),
               _QuickAction(
                 icon: Icons.menu_book_outlined,
-                label: 'Learn',
+                label: l10n.learnLabel,
                 color: AppColors.primary,
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const EducationCenterScreen()),
@@ -74,7 +77,7 @@ class DashboardScreen extends StatelessWidget {
               ),
               _QuickAction(
                 icon: Icons.chat_bubble_outline,
-                label: 'Ask AI',
+                label: l10n.askAiLabel,
                 color: AppColors.primary,
                 onTap: () => showDialog(
                   context: context,
@@ -86,7 +89,7 @@ class DashboardScreen extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
 
           // Care team / help request — talks to the Firebase backend
-          const SectionHeader(title: 'Your Care Team'),
+          SectionHeader(title: l10n.yourCareTeamTitle),
           const SizedBox(height: 12),
           const _CareTeamCard(),
           const SizedBox(height: AppSpacing.md),
@@ -98,13 +101,13 @@ class DashboardScreen extends StatelessWidget {
           const _MessagesSection(),
 
           // Upcoming appointment
-          const SectionHeader(title: 'Upcoming Appointment'),
+          SectionHeader(title: l10n.upcomingAppointmentTitle),
           const SizedBox(height: 12),
           const _UpcomingAppointmentCard(),
           const SizedBox(height: AppSpacing.md),
 
           // Today's medication
-          const SectionHeader(title: "Today's Medication"),
+          SectionHeader(title: l10n.todaysMedicationTitle),
           const SizedBox(height: 12),
           BentoCard(
             child: Column(
@@ -124,23 +127,23 @@ class DashboardScreen extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
 
           // Water intake
-          const SectionHeader(title: 'Water Intake'),
+          SectionHeader(title: l10n.waterIntakeTitle),
           const SizedBox(height: 12),
           const _WaterIntakeCard(),
           const SizedBox(height: AppSpacing.md),
 
           // Daily health tip
-          const SectionHeader(title: "Today's Health Tip"),
+          SectionHeader(title: l10n.todaysHealthTipTitle),
           const SizedBox(height: 12),
           BentoCard(
             color: AppColors.onTertiaryContainer,
-            child: const Row(
+            child: Row(
               children: [
                 Icon(Icons.lightbulb_outline, color: AppColors.primary),
-                SizedBox(width: 12),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Eating iron-rich foods like beans and leafy greens alongside vitamin C can help your body absorb more iron.',
+                    l10n.healthTipText,
                     style: TextStyle(color: AppColors.onSurface),
                   ),
                 ),
@@ -173,7 +176,7 @@ class _QuickAction extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
+              color: color.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: color),
@@ -193,6 +196,7 @@ class _PregnancyProgressCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final mother = context.watch<SessionProvider>().currentUser!;
     final firestore = FirestoreService();
+    final l10n = AppLocalizations.of(context)!;
 
     return StreamBuilder<PregnancyProfile>(
       stream: firestore.watchPregnancyProfile(mother.uid),
@@ -201,7 +205,7 @@ class _PregnancyProgressCard extends StatelessWidget {
           return Container(
             padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(AppRadius.xl)),
-            child: EmptyHint(icon: Icons.error_outline, text: 'Could not load: ${snapshot.error}'),
+            child: EmptyHint(icon: Icons.error_outline, text: l10n.couldNotLoad('${snapshot.error}')),
           );
         }
         if (!snapshot.hasData) {
@@ -229,9 +233,9 @@ class _PregnancyProgressCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Current Progress',
-                            style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 12, fontWeight: FontWeight.w600)),
-                        Text('Week ${profile.pregnancyWeek}',
+                        Text(l10n.currentProgressLabel,
+                            style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12, fontWeight: FontWeight.w600)),
+                        Text(l10n.weekLabel('${profile.pregnancyWeek}'),
                             style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
                       ],
                     ),
@@ -242,8 +246,8 @@ class _PregnancyProgressCard extends StatelessWidget {
                       color: AppColors.onPrimaryContainer,
                       borderRadius: BorderRadius.circular(AppRadius.full),
                     ),
-                    child: Text('Trimester ${profile.trimester}',
-                        style: const TextStyle(color: AppColors.primaryContainer, fontSize: 12, fontWeight: FontWeight.w700)),
+                    child: Text(l10n.trimesterLabel('${profile.trimester}'),
+                        style: TextStyle(color: AppColors.primaryContainer, fontSize: 12, fontWeight: FontWeight.w700)),
                   ),
                 ],
               ),
@@ -251,7 +255,7 @@ class _PregnancyProgressCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.12),
+                  color: Colors.white.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: Row(
@@ -261,8 +265,8 @@ class _PregnancyProgressCard extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Baby is the size of a',
-                            style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 12)),
+                        Text(l10n.babySizeIntro,
+                            style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12)),
                         Text(profile.babySizeComparison,
                             style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
                       ],
@@ -273,15 +277,15 @@ class _PregnancyProgressCard extends StatelessWidget {
               const SizedBox(height: 12),
               ProgressTrack(
                 value: profile.pregnancyWeek / 40,
-                trackColor: Colors.white.withOpacity(0.2),
+                trackColor: Colors.white.withValues(alpha: 0.2),
                 fillColor: AppColors.primaryFixed,
               ),
               const SizedBox(height: 6),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Conception', style: TextStyle(color: Colors.white70, fontSize: 11)),
-                  Text('${profile.daysToDueDate} days to due date',
+                  Text(l10n.conceptionLabel, style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                  Text(l10n.daysToDueDate('${profile.daysToDueDate}'),
                       style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
                 ],
               ),
@@ -300,12 +304,13 @@ class _WaterIntakeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final mother = context.watch<SessionProvider>().currentUser!;
     final firestore = FirestoreService();
+    final l10n = AppLocalizations.of(context)!;
 
     return StreamBuilder<DailyVitals>(
       stream: firestore.watchVitalsForDate(mother.uid, DateTime.now()),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return BentoCard(child: EmptyHint(icon: Icons.error_outline, text: 'Could not load: ${snapshot.error}'));
+          return BentoCard(child: EmptyHint(icon: Icons.error_outline, text: l10n.couldNotLoad('${snapshot.error}')));
         }
         if (!snapshot.hasData) {
           return const BentoCard(child: Center(child: CircularProgressIndicator()));
@@ -316,13 +321,13 @@ class _WaterIntakeCard extends StatelessWidget {
         return BentoCard(
           child: Row(
             children: [
-              const Icon(Icons.water_drop_outlined, color: AppColors.primary, size: 28),
+              Icon(Icons.water_drop_outlined, color: AppColors.primary, size: 28),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${vitals.waterCupsToday} / ${vitals.waterGoalCups} cups',
+                    Text(l10n.cupsFormat('${vitals.waterCupsToday}', '${vitals.waterGoalCups}'),
                         style: const TextStyle(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 6),
                     ProgressTrack(value: vitals.waterCupsToday / vitals.waterGoalCups),
@@ -350,6 +355,7 @@ class _MessagesSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final mother = context.watch<SessionProvider>().currentUser!;
     final firestore = FirestoreService();
+    final l10n = AppLocalizations.of(context)!;
 
     return StreamBuilder<List<ChatThreadSummary>>(
       stream: firestore.watchMyThreads(mother.uid),
@@ -360,7 +366,7 @@ class _MessagesSection extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SectionHeader(title: 'Messages'),
+            SectionHeader(title: l10n.messagesTitle),
             const SizedBox(height: 12),
             ...threads.map((t) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -378,15 +384,17 @@ class _MessagesSection extends StatelessWidget {
                                     builder: (_) => ChatView(
                                       currentUserId: mother.uid,
                                       currentUserName: mother.name,
+                                      currentUserPhotoUrl: mother.photoUrl,
                                       otherUserId: other.uid,
                                       otherUserName: other.name,
+                                      otherUserPhotoUrl: other.photoUrl,
                                       appBarTitle: 'Chat with ${other.name}',
                                     ),
                                   ),
                                 ),
                         child: Row(
                           children: [
-                            const CircleAvatar(backgroundColor: AppColors.onTertiaryContainer, child: Icon(Icons.volunteer_activism, color: AppColors.primary)),
+                            UserAvatar(photoUrl: other?.photoUrl, backgroundColor: AppColors.onTertiaryContainer, icon: Icons.volunteer_activism),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
@@ -394,10 +402,10 @@ class _MessagesSection extends StatelessWidget {
                                 children: [
                                   Row(
                                     children: [
-                                      Text(other?.name ?? 'Health Worker', style: const TextStyle(fontWeight: FontWeight.w700)),
+                                      Text(other?.name ?? l10n.healthWorkerFallbackName, style: const TextStyle(fontWeight: FontWeight.w700)),
                                       if (unread) ...[
                                         const SizedBox(width: 6),
-                                        const Icon(Icons.circle, size: 8, color: AppColors.error),
+                                        Icon(Icons.circle, size: 8, color: AppColors.error),
                                       ],
                                     ],
                                   ),
@@ -431,12 +439,13 @@ class _UpcomingAppointmentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final mother = context.watch<SessionProvider>().currentUser!;
     final firestore = FirestoreService();
+    final l10n = AppLocalizations.of(context)!;
 
     return StreamBuilder<List<Appointment>>(
       stream: firestore.watchAppointmentsForMother(mother.uid),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return BentoCard(child: EmptyHint(icon: Icons.error_outline, text: 'Could not load: ${snapshot.error}'));
+          return BentoCard(child: EmptyHint(icon: Icons.error_outline, text: l10n.couldNotLoad('${snapshot.error}')));
         }
         if (!snapshot.hasData) {
           return const BentoCard(child: Center(child: CircularProgressIndicator()));
@@ -444,7 +453,7 @@ class _UpcomingAppointmentCard extends StatelessWidget {
         final upcoming = snapshot.data!.where((a) => a.status == AppointmentStatus.upcoming).toList()
           ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
         if (upcoming.isEmpty) {
-          return const BentoCard(child: EmptyHint(text: 'No upcoming appointments booked.'));
+          return BentoCard(child: EmptyHint(text: l10n.noUpcomingAppointments));
         }
         final next = upcoming.first;
         return BentoCard(
@@ -469,7 +478,7 @@ class _UpcomingAppointmentCard extends StatelessWidget {
                   children: [
                     Text(next.title, style: const TextStyle(fontWeight: FontWeight.w600)),
                     Text('${next.provider} · ${intl.DateFormat('MMM d, h:mm a').format(next.dateTime)}',
-                        style: const TextStyle(color: AppColors.secondary, fontSize: 12)),
+                        style: TextStyle(color: AppColors.secondary, fontSize: 12)),
                   ],
                 ),
               ),
@@ -508,7 +517,7 @@ class _CareTeamCardState extends State<_CareTeamCard> {
     _messageController.clear();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sent to the admin dashboard — a health worker will follow up.')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.helpRequestSentSnackbar)),
       );
     }
   }
@@ -517,6 +526,7 @@ class _CareTeamCardState extends State<_CareTeamCard> {
   Widget build(BuildContext context) {
     final session = context.watch<SessionProvider>();
     final mother = session.currentUser;
+    final l10n = AppLocalizations.of(context)!;
 
     return BentoCard(
       child: Column(
@@ -532,14 +542,14 @@ class _CareTeamCardState extends State<_CareTeamCard> {
                   children: [
                     Row(
                       children: [
-                        const CircleAvatar(backgroundColor: AppColors.onTertiaryContainer, child: Icon(Icons.volunteer_activism, color: AppColors.primary)),
+                        UserAvatar(photoUrl: chw?.photoUrl, backgroundColor: AppColors.onTertiaryContainer, icon: Icons.volunteer_activism),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(chw?.name ?? 'Your Health Worker', style: const TextStyle(fontWeight: FontWeight.w700)),
-                              const Text('Your assigned health worker', style: TextStyle(fontSize: 12, color: AppColors.secondary)),
+                              Text(chw?.name ?? l10n.healthWorkerFallbackName, style: const TextStyle(fontWeight: FontWeight.w700)),
+                              Text(l10n.yourAssignedHealthWorker, style: TextStyle(fontSize: 12, color: AppColors.secondary)),
                             ],
                           ),
                         ),
@@ -550,14 +560,16 @@ class _CareTeamCardState extends State<_CareTeamCard> {
                                 builder: (_) => ChatView(
                                   currentUserId: mother.uid,
                                   currentUserName: mother.name,
+                                  currentUserPhotoUrl: mother.photoUrl,
                                   otherUserId: chw.uid,
                                   otherUserName: chw.name,
+                                  otherUserPhotoUrl: chw.photoUrl,
                                   appBarTitle: 'Chat with ${chw.name}',
                                 ),
                               ),
                             ),
                             icon: const Icon(Icons.chat_bubble_outline, size: 16),
-                            label: const Text('Message'),
+                            label: Text(l10n.messageButton),
                           ),
                       ],
                     ),
@@ -578,11 +590,11 @@ class _CareTeamCardState extends State<_CareTeamCard> {
                               ),
                               child: Row(
                                 children: [
-                                  if (unread) const Icon(Icons.circle, size: 8, color: AppColors.error),
+                                  if (unread) Icon(Icons.circle, size: 8, color: AppColors.error),
                                   if (unread) const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      unread ? '${chw.name}: ${thread.lastMessage}' : 'You: ${thread.lastMessage}',
+                                      unread ? '${chw.name}: ${thread.lastMessage}' : thread.lastMessage,
                                       style: TextStyle(fontSize: 12, fontWeight: unread ? FontWeight.w700 : FontWeight.w400, color: AppColors.onSurface),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -599,13 +611,13 @@ class _CareTeamCardState extends State<_CareTeamCard> {
               },
             )
           else
-            const Row(
+            Row(
               children: [
                 Icon(Icons.info_outline, color: AppColors.secondary, size: 20),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    "You don't have a health worker assigned yet. Send a request below and an admin will connect you with one.",
+                    l10n.noHealthWorkerAssigned,
                     style: TextStyle(fontSize: 12, color: AppColors.secondary),
                   ),
                 ),
@@ -614,7 +626,7 @@ class _CareTeamCardState extends State<_CareTeamCard> {
           const SizedBox(height: 12),
           TextField(
             controller: _messageController,
-            decoration: const InputDecoration(hintText: 'Describe what you need help with...'),
+            decoration: InputDecoration(hintText: l10n.describeHelpHint),
             maxLines: 2,
           ),
           const SizedBox(height: 8),
@@ -623,7 +635,7 @@ class _CareTeamCardState extends State<_CareTeamCard> {
             child: ElevatedButton.icon(
               onPressed: mother == null ? null : () => _sendHelpRequest(mother),
               icon: const Icon(Icons.send, size: 16),
-              label: const Text('Request Help'),
+              label: Text(l10n.requestHelpButton),
             ),
           ),
         ],
@@ -637,16 +649,12 @@ class _AiAssistantDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return AlertDialog(
-      title: const Text('MamaSalama AI Assistant'),
-      content: const Text(
-        'This is a placeholder for the AI health assistant described in the PRD '
-        '(pregnancy Q&A, symptom triage, nutrition advice, and Kinyarwanda / '
-        'English / Swahili / French translation). Wire this up to your chosen '
-        'LLM provider when the backend is ready.',
-      ),
+      title: Text(l10n.aiAssistantTitle),
+      content: Text(l10n.aiAssistantBody),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Got it')),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l10n.gotIt)),
       ],
     );
   }

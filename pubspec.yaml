@@ -9,27 +9,41 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   provider: ^6.1.2
-  intl: ^0.19.0
+  intl: ^0.20.2
   cupertino_icons: ^1.0.8
   firebase_core: ^3.6.0
   firebase_auth: ^5.3.1
+  google_sign_in: ^6.2.1
   cloud_firestore: ^5.4.4
   connectivity_plus: ^6.1.0
   flutter_local_notifications: ^18.0.1
   # Closing the design-doc gaps (see docs/superpowers/specs/2026-07-30-close-design-gaps-design.md):
-  shared_preferences: ^2.3.2   # persist the chosen language (Gap 1: bilingual)
-  audioplayers: ^6.1.0         # play audio health messages (Gap 2)
-  geolocator: ^13.0.1          # real GPS attached to an SOS (Gap 3)
-  url_launcher: ^6.3.1         # tap-to-call CHW/driver + open location in Maps (Gap 3/4)
+  shared_preferences: ^2.3.3    # persist the chosen language (Gap 1: bilingual)
+  audioplayers: ^6.1.0          # play audio health messages (Gap 2)
+  geolocator: ^13.0.1           # real GPS attached to an SOS (Gap 3)
+  url_launcher: ^6.3.2          # tap-to-call CHW/driver + open location in Maps (Gap 3/4)
+  pdf: ^3.11.1
+  printing: ^5.13.4
+  fl_chart: ^0.69.0
+  cloudinary_public: ^0.23.1
+  dio: ^5.7.0
+  image_picker: ^1.2.3
+  file_picker: ^11.0.2
+  emoji_picker_flutter: ^4.5.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  fake_cloud_firestore: ^3.1.0
+  firebase_auth_mocks: ^0.14.1
 
 flutter:
   uses-material-design: true
+  generate: true
   assets:
     # Placeholder audio health messages (Gap 2). The content team replaces
     # these .mp3 files with real Kinyarwanda voice recordings; the filenames

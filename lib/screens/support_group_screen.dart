@@ -57,7 +57,7 @@ class _SupportGroupScreenState extends State<SupportGroupScreen> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(AppSpacing.edgeMargin, AppSpacing.sm, AppSpacing.edgeMargin, AppSpacing.sm),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.surfaceContainerLowest,
               border: Border(bottom: BorderSide(color: AppColors.outlineVariant)),
             ),
@@ -70,13 +70,13 @@ class _SupportGroupScreenState extends State<SupportGroupScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(children: [
+                          Row(children: [
                             Icon(Icons.groups, color: AppColors.primary, size: 16),
-                            SizedBox(width: 4),
+                            const SizedBox(width: 4),
                             Text('Community Group', style: TextStyle(fontSize: 11, color: AppColors.secondary)),
                           ]),
                           const SizedBox(height: 2),
-                          Text(widget.group.description, style: const TextStyle(fontSize: 12, color: AppColors.secondary)),
+                          Text(widget.group.description, style: TextStyle(fontSize: 12, color: AppColors.secondary)),
                         ],
                       ),
                     ),
@@ -129,7 +129,29 @@ class _SupportGroupScreenState extends State<SupportGroupScreen> {
                   padding: const EdgeInsets.fromLTRB(AppSpacing.edgeMargin, AppSpacing.sm, AppSpacing.edgeMargin, AppSpacing.md),
                   children: posts.map((p) => Padding(
                         padding: const EdgeInsets.only(bottom: 12),
-                        child: _PostCard(post: p),
+                        child: _PostCard(
+                          post: p,
+                          canDelete: p.authorId == me.uid,
+                          onDelete: () async {
+                            final confirmed = await showDialog<bool>(
+                              context: context,
+                              builder: (dialogContext) => AlertDialog(
+                                title: const Text('Delete post?'),
+                                content: const Text('This cannot be undone.'),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Cancel')),
+                                  TextButton(
+                                    onPressed: () => Navigator.of(dialogContext).pop(true),
+                                    child: Text('Delete', style: TextStyle(color: AppColors.error)),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirmed == true) {
+                              await _firestore.deleteCommunityPost(widget.group.id, p.id);
+                            }
+                          },
+                        ),
                       )).toList(),
                 );
               },
@@ -165,7 +187,9 @@ class _SupportGroupScreenState extends State<SupportGroupScreen> {
 
 class _PostCard extends StatelessWidget {
   final CommunityPost post;
-  const _PostCard({required this.post});
+  final bool canDelete;
+  final VoidCallback onDelete;
+  const _PostCard({required this.post, required this.canDelete, required this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -183,6 +207,14 @@ class _PostCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(child: Text(post.author, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13))),
               PillChip(label: post.tag),
+              if (canDelete)
+                IconButton(
+                  onPressed: onDelete,
+                  icon: Icon(Icons.delete_outline, size: 18, color: AppColors.secondary),
+                  visualDensity: VisualDensity.compact,
+                  constraints: const BoxConstraints(),
+                  padding: const EdgeInsets.only(left: 8),
+                ),
             ],
           ),
           const SizedBox(height: 8),
@@ -190,13 +222,13 @@ class _PostCard extends StatelessWidget {
           const SizedBox(height: 8),
           Row(
             children: [
-              const Icon(Icons.favorite_border, size: 16, color: AppColors.secondary),
+              Icon(Icons.favorite_border, size: 16, color: AppColors.secondary),
               const SizedBox(width: 4),
-              Text('${post.likes}', style: const TextStyle(fontSize: 12, color: AppColors.secondary)),
+              Text('${post.likes}', style: TextStyle(fontSize: 12, color: AppColors.secondary)),
               const SizedBox(width: 16),
-              const Icon(Icons.chat_bubble_outline, size: 16, color: AppColors.secondary),
+              Icon(Icons.chat_bubble_outline, size: 16, color: AppColors.secondary),
               const SizedBox(width: 4),
-              Text('${post.comments}', style: const TextStyle(fontSize: 12, color: AppColors.secondary)),
+              Text('${post.comments}', style: TextStyle(fontSize: 12, color: AppColors.secondary)),
             ],
           ),
         ],

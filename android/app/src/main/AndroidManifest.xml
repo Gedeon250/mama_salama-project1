@@ -1,4 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The debug/profile manifests get this for free from the Flutter
+         tool (hot reload, VM service, etc); release builds only read this
+         main manifest, so without it a release APK has zero network access
+         and every Firebase call silently fails. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Runtime permission required on Android 13+ to show local
          notifications (chat message alerts) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
@@ -6,6 +11,11 @@
          can find the mother (Gap 3). Coarse is a fallback when fine is denied. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <!-- image_picker: camera capture + gallery access for profile pictures
+         and chat/CV attachments -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
     <application
         android:label="mamasalama_app"
         android:name="${applicationName}"

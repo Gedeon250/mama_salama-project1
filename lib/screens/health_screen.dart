@@ -1,6 +1,8 @@
+// Ketsia - health screen update
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../models/user_models.dart';
 import '../providers/session_provider.dart';
 import '../services/firestore_service.dart';
@@ -17,14 +19,15 @@ class HealthScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final mother = context.watch<SessionProvider>().currentUser!;
     final firestore = FirestoreService();
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: const MamaAppBar(title: 'Health'),
+      appBar: MamaAppBar(title: l10n.healthAppBarTitle),
       body: StreamBuilder<PregnancyProfile>(
         stream: firestore.watchPregnancyProfile(mother.uid),
         builder: (context, profileSnap) {
           if (profileSnap.hasError) {
-            return Center(child: Padding(padding: const EdgeInsets.all(24), child: EmptyHint(icon: Icons.error_outline, text: 'Could not load: ${profileSnap.error}')));
+            return Center(child: Padding(padding: const EdgeInsets.all(24), child: EmptyHint(icon: Icons.error_outline, text: l10n.couldNotLoad('${profileSnap.error}'))));
           }
           if (!profileSnap.hasData) return const Center(child: CircularProgressIndicator());
           final profile = profileSnap.data!;
@@ -33,7 +36,7 @@ class HealthScreen extends StatelessWidget {
             stream: firestore.watchRecentVitals(mother.uid),
             builder: (context, vitalsSnap) {
               if (vitalsSnap.hasError) {
-                return Center(child: Padding(padding: const EdgeInsets.all(24), child: EmptyHint(icon: Icons.error_outline, text: 'Could not load vitals: ${vitalsSnap.error}')));
+                return Center(child: Padding(padding: const EdgeInsets.all(24), child: EmptyHint(icon: Icons.error_outline, text: l10n.couldNotLoad('${vitalsSnap.error}'))));
               }
               if (!vitalsSnap.hasData) return const Center(child: CircularProgressIndicator());
               final recent = vitalsSnap.data!;
@@ -61,36 +64,36 @@ class HealthScreen extends StatelessWidget {
                           children: [
                             Row(
                               children: [
-                                Text('Your Journey', style: Theme.of(context).textTheme.headlineSmall),
+                                Text(l10n.yourJourneyTitle, style: Theme.of(context).textTheme.headlineSmall),
                                 IconButton(
                                   onPressed: () => _showEditProfileSheet(context, firestore, mother.uid, profile),
-                                  icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
+                                  icon: Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
                                   visualDensity: VisualDensity.compact,
                                 ),
                               ],
                             ),
-                            Text('Week ${profile.pregnancyWeek} · Trimester ${profile.trimester}',
-                                style: const TextStyle(color: AppColors.secondary, fontSize: 13)),
+                            Text(l10n.weekTrimesterFormat('${profile.pregnancyWeek}', '${profile.trimester}'),
+                                style: TextStyle(color: AppColors.secondary, fontSize: 13)),
                           ],
                         ),
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(color: AppColors.onTertiaryContainer, borderRadius: BorderRadius.circular(AppRadius.full)),
-                        child: Text('${profile.daysToDueDate} Days to Due Date',
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                        child: Text(l10n.daysToDueDateBadge('${profile.daysToDueDate}'),
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
                   ProgressTrack(value: profile.pregnancyWeek / 40, height: 10),
                   const SizedBox(height: 6),
-                  const Row(
+                  Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('T1', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 12)),
-                      Text('T2', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 12)),
-                      Text('T3', style: TextStyle(color: AppColors.secondary, fontSize: 12)),
+                      Text(l10n.trimesterShort1, style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 12)),
+                      Text(l10n.trimesterShort2, style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 12)),
+                      Text(l10n.trimesterShort3, style: TextStyle(color: AppColors.secondary, fontSize: 12)),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.md),
@@ -105,13 +108,13 @@ class HealthScreen extends StatelessWidget {
                             children: [
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: const [
-                                  Text("Baby's Size", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                                children: [
+                                  Text(l10n.babysSizeTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                                   Icon(Icons.child_care, color: AppColors.primary, size: 18),
                                 ],
                               ),
                               const SizedBox(height: 12),
-                              const Icon(Icons.egg_alt_outlined, color: AppColors.primary, size: 48),
+                              Icon(Icons.egg_alt_outlined, color: AppColors.primary, size: 48),
                               const SizedBox(height: 8),
                               Text(profile.babySizeComparison, style: const TextStyle(fontWeight: FontWeight.w700)),
                             ],
@@ -124,16 +127,16 @@ class HealthScreen extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Row(
+                              Row(
                                 children: [
                                   Icon(Icons.monitor_weight_outlined, color: AppColors.primary, size: 18),
-                                  SizedBox(width: 6),
-                                  Text('Weight', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                                  const SizedBox(width: 6),
+                                  Text(l10n.weightTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                                 ],
                               ),
                               const SizedBox(height: 8),
                               if (weights.isEmpty)
-                                const Text('No data yet', style: TextStyle(fontSize: 13, color: AppColors.secondary))
+                                Text(l10n.noDataYet, style: TextStyle(fontSize: 13, color: AppColors.secondary))
                               else ...[
                                 Text('${weights.last.toStringAsFixed(1)} kg',
                                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
@@ -155,22 +158,22 @@ class HealthScreen extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Row(
+                              Row(
                                 children: [
                                   Icon(Icons.favorite_border, color: AppColors.error, size: 18),
-                                  SizedBox(width: 6),
-                                  Text('Blood Pressure', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                                  const SizedBox(width: 6),
+                                  Text(l10n.bloodPressureTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                                 ],
                               ),
                               const SizedBox(height: 8),
                               if (systolics.isEmpty || diastolics.isEmpty)
-                                const Text('No data yet', style: TextStyle(fontSize: 13, color: AppColors.secondary))
+                                Text(l10n.noDataYet, style: TextStyle(fontSize: 13, color: AppColors.secondary))
                               else ...[
                                 Text(
                                   '${systolics.last.round()}/${diastolics.last.round()}',
                                   style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                                 ),
-                                const Text('mmHg', style: TextStyle(fontSize: 11, color: AppColors.secondary)),
+                                Text(l10n.mmHgUnit, style: TextStyle(fontSize: 11, color: AppColors.secondary)),
                               ],
                             ],
                           ),
@@ -182,16 +185,16 @@ class HealthScreen extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Row(
+                              Row(
                                 children: [
                                   Icon(Icons.bloodtype_outlined, color: AppColors.tertiary, size: 18),
-                                  SizedBox(width: 6),
-                                  Text('Blood Sugar', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                                  const SizedBox(width: 6),
+                                  Text(l10n.bloodSugarTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                                 ],
                               ),
                               const SizedBox(height: 8),
                               if (sugars.isEmpty)
-                                const Text('No data yet', style: TextStyle(fontSize: 13, color: AppColors.secondary))
+                                Text(l10n.noDataYet, style: TextStyle(fontSize: 13, color: AppColors.secondary))
                               else
                                 Text('${sugars.last.round()} mg/dL',
                                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
@@ -203,7 +206,7 @@ class HealthScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.md),
 
-                  const SectionHeader(title: 'Quick Tracking'),
+                  SectionHeader(title: l10n.quickTrackingTitle),
                   const SizedBox(height: 12),
                   _KickCounterCard(uid: mother.uid, firestore: firestore, today: today),
                   const SizedBox(height: 12),
@@ -212,26 +215,26 @@ class HealthScreen extends StatelessWidget {
                   _MoodTrackerCard(uid: mother.uid, firestore: firestore, today: today),
                   const SizedBox(height: AppSpacing.md),
 
-                  const SectionHeader(title: 'Records & Care'),
+                  SectionHeader(title: l10n.recordsAndCareTitle),
                   const SizedBox(height: 12),
                   _LinkRow(
                     icon: Icons.folder_shared_outlined,
-                    title: 'Medical Records',
-                    subtitle: 'Visit notes, ultrasounds, delivery history',
+                    title: l10n.medicalRecordsTitle,
+                    subtitle: l10n.medicalRecordsSubtitle,
                     onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MedicalRecordsScreen())),
                   ),
                   const SizedBox(height: 10),
                   _LinkRow(
                     icon: Icons.science_outlined,
-                    title: 'Lab Results',
-                    subtitle: 'Blood work, glucose, and screening results',
+                    title: l10n.labResultsTitle,
+                    subtitle: l10n.labResultsSubtitle,
                     onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LabResultsScreen())),
                   ),
                   const SizedBox(height: 10),
                   _LinkRow(
                     icon: Icons.vaccines_outlined,
-                    title: 'Vaccinations',
-                    subtitle: 'Mother & baby immunization schedule',
+                    title: l10n.vaccinationsTitle,
+                    subtitle: l10n.vaccinationsSubtitle,
                     onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const VaccinationsScreen())),
                   ),
                 ],
@@ -244,6 +247,7 @@ class HealthScreen extends StatelessWidget {
   }
 
   void _showEditProfileSheet(BuildContext context, FirestoreService firestore, String uid, PregnancyProfile current) {
+    final l10n = AppLocalizations.of(context)!;
     final weekController = TextEditingController(text: '${current.pregnancyWeek}');
     final bloodTypeController = TextEditingController(text: current.bloodType);
     final allergiesController = TextEditingController(text: current.allergies.join(', '));
@@ -267,17 +271,17 @@ class HealthScreen extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Edit Pregnancy Info', style: Theme.of(ctx).textTheme.headlineSmall),
+                Text(l10n.editPregnancyInfoTitle, style: Theme.of(ctx).textTheme.headlineSmall),
                 const SizedBox(height: 16),
                 TextField(
                   controller: weekController,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Pregnancy week'),
+                  decoration: InputDecoration(labelText: l10n.pregnancyWeekLabel),
                 ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   icon: const Icon(Icons.calendar_today_outlined, size: 16),
-                  label: Text('Due date: ${dueDate.year}-${dueDate.month.toString().padLeft(2, '0')}-${dueDate.day.toString().padLeft(2, '0')}'),
+                  label: Text(l10n.dueDateLabel('${dueDate.year}-${dueDate.month.toString().padLeft(2, '0')}-${dueDate.day.toString().padLeft(2, '0')}')),
                   onPressed: () async {
                     final picked = await showDatePicker(
                       context: ctx,
@@ -291,17 +295,17 @@ class HealthScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 TextField(
                   controller: bloodTypeController,
-                  decoration: const InputDecoration(labelText: 'Blood type'),
+                  decoration: InputDecoration(labelText: l10n.bloodTypeLabel),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: allergiesController,
-                  decoration: const InputDecoration(labelText: 'Allergies (comma-separated)'),
+                  decoration: InputDecoration(labelText: l10n.allergiesLabel),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: babySizeController,
-                  decoration: const InputDecoration(labelText: "Baby's size comparison"),
+                  decoration: InputDecoration(labelText: l10n.babySizeComparisonLabel),
                 ),
                 const SizedBox(height: 20),
                 SizedBox(
@@ -325,7 +329,7 @@ class HealthScreen extends StatelessWidget {
                       );
                       Navigator.of(ctx).pop();
                     },
-                    child: const Text('Save'),
+                    child: Text(l10n.saveButton),
                   ),
                 ),
               ],
@@ -396,29 +400,30 @@ class _KickCounterCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return BentoCard(
       child: Row(
         children: [
-          const Icon(Icons.touch_app_outlined, color: AppColors.primary, size: 28),
+          Icon(Icons.touch_app_outlined, color: AppColors.primary, size: 28),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Baby Kick Counter', style: TextStyle(fontWeight: FontWeight.w700)),
-                Text('${today.kickCountToday} kicks logged today', style: const TextStyle(color: AppColors.secondary, fontSize: 12)),
+                Text(l10n.babyKickCounterTitle, style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text(l10n.kicksLoggedToday('${today.kickCountToday}'), style: TextStyle(color: AppColors.secondary, fontSize: 12)),
               ],
             ),
           ),
           IconButton(
             onPressed: () => firestore.resetKickCounter(uid),
-            icon: const Icon(Icons.refresh, color: AppColors.secondary),
-            tooltip: 'Reset',
+            icon: Icon(Icons.refresh, color: AppColors.secondary),
+            tooltip: l10n.resetTooltip,
           ),
           ElevatedButton(
             onPressed: () => firestore.logKick(uid),
             style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10)),
-            child: const Text('Kick'),
+            child: Text(l10n.kickButton),
           ),
         ],
       ),
@@ -467,6 +472,7 @@ class _ContractionTimerCardState extends State<_ContractionTimerCard> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final isRunning = _startedAt != null;
     final minutes = _elapsed.inMinutes.remainder(60).toString().padLeft(2, '0');
     final seconds = _elapsed.inSeconds.remainder(60).toString().padLeft(2, '0');
@@ -480,9 +486,9 @@ class _ContractionTimerCardState extends State<_ContractionTimerCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Contraction Timer', style: TextStyle(fontWeight: FontWeight.w700)),
+                Text(l10n.contractionTimerTitle, style: const TextStyle(fontWeight: FontWeight.w700)),
                 Text(
-                  isRunning ? '$minutes:$seconds elapsed' : '${widget.today.contractionsTodaySeconds.length} logged today',
+                  isRunning ? l10n.elapsedFormat(minutes, seconds) : l10n.loggedTodayFormat('${widget.today.contractionsTodaySeconds.length}'),
                   style: TextStyle(color: isRunning ? AppColors.error : AppColors.secondary, fontSize: 12),
                 ),
               ],
@@ -494,7 +500,7 @@ class _ContractionTimerCardState extends State<_ContractionTimerCard> {
               backgroundColor: isRunning ? AppColors.error : AppColors.primary,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             ),
-            child: Text(isRunning ? 'Stop' : 'Start'),
+            child: Text(isRunning ? l10n.stopButton : l10n.startButton),
           ),
         ],
       ),
@@ -508,15 +514,15 @@ class _MoodTrackerCard extends StatelessWidget {
   final DailyVitals today;
   const _MoodTrackerCard({required this.uid, required this.firestore, required this.today});
 
-  static const moods = ['Great', 'Good', 'Tired', 'Anxious', 'Low'];
-
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final moods = [l10n.moodGreat, l10n.moodGood, l10n.moodTired, l10n.moodAnxious, l10n.moodLow];
     return BentoCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Mood Tracker', style: TextStyle(fontWeight: FontWeight.w700)),
+          Text(l10n.moodTrackerTitle, style: const TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(height: 10),
           Wrap(
             spacing: 8,
@@ -560,11 +566,11 @@ class _LinkRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-                Text(subtitle, style: const TextStyle(color: AppColors.secondary, fontSize: 12)),
+                Text(subtitle, style: TextStyle(color: AppColors.secondary, fontSize: 12)),
               ],
             ),
           ),
-          const Icon(Icons.chevron_right, color: AppColors.outline),
+          Icon(Icons.chevron_right, color: AppColors.outline),
         ],
       ),
     );

@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "872737217222-3fo47t3m1jal8m843tj0vobeksfhhehv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mamasalama.mamasalama_app",
+            "certificate_hash": "0c451b13b7d22bd02cdac6e78b5379727f584c34"
+          }
+        },
+        {
           "client_id": "872737217222-2ecb7sfo7t824rab37quq3s42ojvhkq0.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -29,6 +37,13 @@
             {
               "client_id": "872737217222-2ecb7sfo7t824rab37quq3s42ojvhkq0.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "872737217222-mn46msvcj8019d2je37ld1viug6i8sp0.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.mamasalama.mamasalamaApp"
+              }
             }
           ]
         }

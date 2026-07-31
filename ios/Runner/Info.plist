@@ -70,5 +70,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>MamaSalama uses the camera to take a profile picture or a photo to attach to a message.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>MamaSalama needs access to your photos to set a profile picture or attach an image to a message.</string>
 </dict>
 </plist>

@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../providers/app_data.dart';
 import '../providers/session_provider.dart';
 import '../models/user_models.dart';
 import '../services/firestore_service.dart';
 import '../services/location_service.dart';
 import '../services/launchers.dart';
-import '../l10n/app_strings.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import 'sos_status.dart';
 
 class EmergencySosScreen extends StatefulWidget {
-  const EmergencySosScreen({super.key});
+  // Test-only hook: lets widget tests inject a FirestoreService backed by a
+  // fake FirebaseFirestore instead of the real one. Never set in app code.
+  final FirestoreService? firestoreOverride;
+  const EmergencySosScreen({super.key, this.firestoreOverride});
 
   @override
   State<EmergencySosScreen> createState() => _EmergencySosScreenState();
@@ -20,7 +23,7 @@ class EmergencySosScreen extends StatefulWidget {
 
 class _EmergencySosScreenState extends State<EmergencySosScreen> with SingleTickerProviderStateMixin {
   late final AnimationController _pulseController;
-  final _firestore = FirestoreService();
+  late final _firestore = widget.firestoreOverride ?? FirestoreService();
   final _location = const LocationService();
 
   // Id of the request this SOS created, so we can follow it in the live
@@ -43,11 +46,15 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with SingleTick
   }
 
   Future<void> _triggerSos(AppData data) async {
-    final mother = context.read<SessionProvider>().currentUser;
-    if (mother == null) return;
-
     data.startSos();
     setState(() => _locating = true);
+
+    final mother = context.read<SessionProvider>().currentUser;
+    if (mother == null) {
+      // No signed-in mother (e.g. in tests) — nothing to persist to Firestore.
+      setState(() => _locating = false);
+      return;
+    }
 
     // Best-effort GPS — never blocks the alert (returns null if unavailable).
     final fix = await _location.tryGetFix();
@@ -93,9 +100,10 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with SingleTick
   Widget build(BuildContext context) {
     final data = context.watch<AppData>();
     final mother = context.read<SessionProvider>().currentUser;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: MamaAppBar(title: context.tr(StrKey.emergencyTitle), showBack: true),
+      appBar: MamaAppBar(title: l10n.emergencySosTitle, showBack: true),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.edgeMargin, vertical: AppSpacing.md),
         children: [
@@ -128,7 +136,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with SingleTick
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 24),
                             child: Text(
-                              data.sosActive ? context.tr(StrKey.sosInProgress) : context.tr(StrKey.sosTapToCall),
+                              data.sosActive ? l10n.dispatchInProgress : l10n.tapToCallAmbulance,
                               textAlign: TextAlign.center,
                               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                             ),
@@ -145,7 +153,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with SingleTick
                     children: [
                       const Icon(Icons.wifi_protected_setup, size: 16, color: AppColors.error),
                       const SizedBox(width: 6),
-                      Text(context.tr(StrKey.sosConnecting), style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w600)),
+                      Text(l10n.connectingToDispatch, style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w600)),
                     ],
                   ),
               ],
@@ -153,9 +161,9 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with SingleTick
           ),
           const SizedBox(height: AppSpacing.md),
 
-          if (data.sosActive && mother != null) ...[
+          if (data.sosActive) ...[
             StreamBuilder<List<HelpRequest>>(
-              stream: _firestore.watchRequestsForMother(mother.uid),
+              stream: mother != null ? _firestore.watchRequestsForMother(mother.uid) : const Stream<List<HelpRequest>>.empty(),
               builder: (context, snapshot) {
                 final active = _findActive(snapshot.data);
                 return _LiveStatus(
@@ -169,7 +177,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with SingleTick
             const SizedBox(height: AppSpacing.md),
           ],
 
-          const SectionHeader(title: 'Nearby Facilities'),
+          SectionHeader(title: l10n.nearbyFacilitiesTitle),
           const SizedBox(height: 12),
           _facilityTile('Kigali University Teaching Hospital', '1.2 km · 4 min', Icons.local_hospital_outlined),
           const SizedBox(height: 10),
@@ -178,11 +186,11 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with SingleTick
           _facilityTile('Kabuga Health Center (CHW)', '0.8 km · 3 min', Icons.medical_services_outlined),
           const SizedBox(height: AppSpacing.md),
 
-          const SectionHeader(title: 'Emergency Contacts'),
+          SectionHeader(title: l10n.emergencyContactsTitle),
           const SizedBox(height: 12),
           BentoCard(
             child: Text(
-              '${data.profile.emergencyContactsCount} contacts will be notified automatically when SOS is triggered. Manage them from your Profile.',
+              l10n.emergencyContactsNotice(data.profile.emergencyContactsCount),
               style: const TextStyle(fontSize: 13, color: AppColors.secondary),
             ),
           ),

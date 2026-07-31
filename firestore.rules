@@ -19,6 +19,10 @@ service cloud.firestore {
       return signedIn() && myRole() == 'admin';
     }
 
+    function isHospital() {
+      return signedIn() && myRole() == 'hospital';
+    }
+
     // True if the caller is the CHW assigned to the given mother.
     function isAssignedChwFor(motherId) {
       return signedIn() && myRole() == 'chw' &&
@@ -29,12 +33,33 @@ service cloud.firestore {
     // Also holds a `pregnancyProfile` map field, covered by the same
     // read/update rules as the rest of the doc.
     match /users/{uid} {
-      allow read: if signedIn();
+      // Any signed-in user can read their own doc; CHW/Admin/Hospital
+      // dashboards need to read every user (assigning CHWs, hospital
+      // referral pickers, etc). A mother is scoped to her own doc plus any
+      // CHW doc (to show her care team's name on the dashboard) — NOT other
+      // mothers', which would otherwise leak pregnancyProfile (due date,
+      // blood type, allergies, high-risk flag) to anyone who learns another
+      // mother's uid (e.g. via a community post's authorId).
+      allow read: if signedIn() && (
+        request.auth.uid == uid ||
+        myRole() == 'chw' ||
+        myRole() == 'admin' ||
+        myRole() == 'hospital' ||
+        resource.data.role == 'chw'
+      );
       // Anyone can create their own account doc on signup.
       allow create: if signedIn() && request.auth.uid == uid;
-      // A user can update their own doc; an admin can update anyone's
-      // (used for assigning a CHW to a mother).
-      allow update: if signedIn() && (request.auth.uid == uid || isAdmin());
+      // A user can update their own doc, but not their own `role` — that
+      // field only moves via an admin action (assigning a CHW to a mother
+      // is a separate `assignedChwId` field on the mother's own doc, not
+      // `role`, so this doesn't block that). Without this restriction any
+      // signed-in user (in particular a chwApplicant awaiting review)
+      // could just self-write `role: 'chw'` and skip the whole approval
+      // flow in ChwApplicationScreen / AdminShell.
+      allow update: if signedIn() && (
+        (request.auth.uid == uid && request.resource.data.role == resource.data.role) ||
+        isAdmin()
+      );
       allow delete: if isAdmin();
 
       // ---- users/{uid}/vitals/{yyyy-MM-dd} : DailyVitals docs ----
@@ -51,10 +76,16 @@ service cloud.firestore {
 
     // ---- helpRequests/{id} : SOS + "I need help" requests ----
     match /helpRequests/{id} {
-      // Kept broad on read so a CHW can see the unassigned pool and an
-      // admin can see everything; tighten to per-role filters once you
-      // have real volume and want to shard requests further.
-      allow read: if signedIn();
+      // Broad for CHW/Admin so a CHW can see the unassigned pool and an
+      // admin can see everything; a mother is scoped to her own requests —
+      // she has no legitimate reason to read another mother's SOS message
+      // text, and nothing in the app queries this collection as a mother
+      // today, so this was a pure latent leak, not a used broad-read path.
+      allow read: if signedIn() && (
+        resource.data.motherId == request.auth.uid ||
+        myRole() == 'chw' ||
+        isAdmin()
+      );
       allow create: if signedIn() && request.resource.data.motherId == request.auth.uid;
       // Mother can cancel her own request; CHW can claim/resolve; admin can
       // assign/resolve any.
@@ -71,7 +102,7 @@ service cloud.firestore {
         return myRole() == 'chw' &&
           get(/databases/$(database)/documents/users/$(resource.data.motherId)).data.assignedChwId == request.auth.uid;
       }
-      allow read: if signedIn() && (resource.data.motherId == request.auth.uid || isAssignedChw() || isAdmin());
+      allow read: if signedIn() && (resource.data.motherId == request.auth.uid || isAssignedChw() || isAdmin() || isHospital());
       allow create: if signedIn() && request.resource.data.motherId == request.auth.uid;
       allow update: if signedIn() && (resource.data.motherId == request.auth.uid || isAdmin());
     }
@@ -88,18 +119,31 @@ service cloud.firestore {
     // Written only by a CHW for one of their assigned mothers (or an
     // admin); a mother can only ever read her own — no create/update.
     match /medicalRecords/{id} {
-      allow read: if signedIn() && (resource.data.motherId == request.auth.uid || isAssignedChwFor(resource.data.motherId) || isAdmin());
+      allow read: if signedIn() && (resource.data.motherId == request.auth.uid || isAssignedChwFor(resource.data.motherId) || isAdmin() || isHospital());
       allow create: if signedIn() && (isAssignedChwFor(request.resource.data.motherId) || isAdmin());
     }
 
     match /labResults/{id} {
-      allow read: if signedIn() && (resource.data.motherId == request.auth.uid || isAssignedChwFor(resource.data.motherId) || isAdmin());
+      allow read: if signedIn() && (resource.data.motherId == request.auth.uid || isAssignedChwFor(resource.data.motherId) || isAdmin() || isHospital());
       allow create: if signedIn() && (isAssignedChwFor(request.resource.data.motherId) || isAdmin());
     }
 
     match /vaccineRecords/{id} {
-      allow read: if signedIn() && (resource.data.motherId == request.auth.uid || isAssignedChwFor(resource.data.motherId) || isAdmin());
+      allow read: if signedIn() && (resource.data.motherId == request.auth.uid || isAssignedChwFor(resource.data.motherId) || isAdmin() || isHospital());
       allow create: if signedIn() && (isAssignedChwFor(request.resource.data.motherId) || isAdmin());
+    }
+
+    // ---- referrals/{id} : CHW -> Hospital, generated alongside a
+    // referral letter PDF (see report_service.dart) ----
+    match /referrals/{id} {
+      allow read: if signedIn() && (
+        resource.data.chwId == request.auth.uid ||
+        resource.data.hospitalId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if signedIn() &&
+        isAssignedChwFor(request.resource.data.motherId) &&
+        request.resource.data.chwId == request.auth.uid;
     }
 
     // ---- educationContent/{id} : lessons, written by Admins only ----
@@ -122,6 +166,7 @@ service cloud.firestore {
         allow create: if signedIn() &&
           request.resource.data.authorId == request.auth.uid &&
           request.resource.data.isExpertAnswer == (myRole() == 'chw');
+        allow delete: if signedIn() && resource.data.authorId == request.auth.uid;
       }
     }
 

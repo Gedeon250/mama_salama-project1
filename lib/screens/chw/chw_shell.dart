@@ -6,10 +6,13 @@ import '../../models/user_models.dart';
 import '../../services/chat_alert_service.dart';
 import '../../services/firestore_service.dart';
 import '../../services/launchers.dart';
+import '../../services/report_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/chat_view.dart';
+import '../../widgets/user_avatar.dart';
 import '../community_hub_screen.dart';
+import '../messages_inbox_screen.dart';
 
 class ChwShell extends StatefulWidget {
   const ChwShell({super.key});
@@ -43,7 +46,11 @@ class _ChwShellState extends State<ChwShell> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Health Worker'),
+        title: Text(_index == 0
+            ? 'Requests'
+            : _index == 1
+                ? 'My Mothers'
+                : 'Messages'),
         actions: [
           IconButton(
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CommunityHubScreen())),
@@ -62,6 +69,7 @@ class _ChwShellState extends State<ChwShell> {
               children: [
                 _RequestsTab(me: me, firestore: _firestore),
                 _MyMothersTab(me: me, firestore: _firestore),
+                const MessagesInboxScreen(embedded: true),
               ],
             ),
           ),
@@ -73,6 +81,7 @@ class _ChwShellState extends State<ChwShell> {
         destinations: const [
           NavigationDestination(icon: Icon(Icons.campaign_outlined), selectedIcon: Icon(Icons.campaign), label: 'Requests'),
           NavigationDestination(icon: Icon(Icons.groups_outlined), selectedIcon: Icon(Icons.groups), label: 'My Mothers'),
+          NavigationDestination(icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Messages'),
         ],
       ),
     );
@@ -201,7 +210,7 @@ class _RequestCard extends StatelessWidget {
               Icon(isSos ? Icons.emergency : Icons.help_outline, color: isSos ? AppColors.error : AppColors.primary),
               const SizedBox(width: 8),
               Expanded(child: Text(request.motherName, style: const TextStyle(fontWeight: FontWeight.w700))),
-              Text(intl.DateFormat('MMM d, h:mm a').format(request.createdAt), style: const TextStyle(fontSize: 11, color: AppColors.secondary)),
+              Text(intl.DateFormat('MMM d, h:mm a').format(request.createdAt), style: TextStyle(fontSize: 11, color: AppColors.secondary)),
             ],
           ),
           const SizedBox(height: 6),
@@ -289,6 +298,7 @@ class _RequestCard extends StatelessWidget {
                             builder: (_) => ChatView(
                               currentUserId: me.uid,
                               currentUserName: me.name,
+                              currentUserPhotoUrl: me.photoUrl,
                               otherUserId: request.motherId,
                               otherUserName: request.motherName,
                               appBarTitle: 'Chat with ${request.motherName}',
@@ -369,15 +379,17 @@ class _MyMothersTab extends StatelessWidget {
                             builder: (_) => ChatView(
                               currentUserId: me.uid,
                               currentUserName: me.name,
+                              currentUserPhotoUrl: me.photoUrl,
                               otherUserId: m.uid,
                               otherUserName: m.name,
+                              otherUserPhotoUrl: m.photoUrl,
                               appBarTitle: 'Chat with ${m.name}',
                             ),
                           ),
                         ),
                         child: Row(
                           children: [
-                            const CircleAvatar(backgroundColor: AppColors.secondaryContainer, child: Icon(Icons.pregnant_woman, color: AppColors.primary)),
+                            UserAvatar(photoUrl: m.photoUrl, backgroundColor: AppColors.secondaryContainer, icon: Icons.pregnant_woman),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
@@ -388,7 +400,7 @@ class _MyMothersTab extends StatelessWidget {
                                       Text(m.name, style: const TextStyle(fontWeight: FontWeight.w700)),
                                       if (unread) ...[
                                         const SizedBox(width: 6),
-                                        const Icon(Icons.circle, size: 8, color: AppColors.error),
+                                        Icon(Icons.circle, size: 8, color: AppColors.error),
                                       ],
                                     ],
                                   ),
@@ -401,12 +413,28 @@ class _MyMothersTab extends StatelessWidget {
                                 ],
                               ),
                             ),
+                            StreamBuilder<PregnancyProfile>(
+                              stream: firestore.watchPregnancyProfile(m.uid),
+                              builder: (context, profileSnap) {
+                                final isHighRisk = profileSnap.data?.isHighRisk ?? false;
+                                return IconButton(
+                                  onPressed: () => firestore.setHighRisk(m.uid, !isHighRisk),
+                                  icon: Icon(Icons.warning_amber_rounded, color: isHighRisk ? AppColors.error : AppColors.outline),
+                                  tooltip: isHighRisk ? 'Marked high-risk — tap to unmark' : 'Mark high-risk',
+                                );
+                              },
+                            ),
                             IconButton(
                               onPressed: () => _showAddRecordSheet(context, firestore, m),
-                              icon: const Icon(Icons.note_add_outlined, color: AppColors.primary),
+                              icon: Icon(Icons.note_add_outlined, color: AppColors.primary),
                               tooltip: 'Add record',
                             ),
-                            const Icon(Icons.chat_bubble_outline, color: AppColors.primary),
+                            IconButton(
+                              onPressed: () => _showReferralSheet(context, firestore, me, m),
+                              icon: Icon(Icons.local_hospital_outlined, color: AppColors.primary),
+                              tooltip: 'Referral letter',
+                            ),
+                            Icon(Icons.chat_bubble_outline, color: AppColors.primary),
                           ],
                         ),
                       ),
@@ -417,6 +445,15 @@ class _MyMothersTab extends StatelessWidget {
           },
         );
       },
+    );
+  }
+
+  void _showReferralSheet(BuildContext context, FirestoreService firestore, AppUser me, AppUser forMother) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl))),
+      builder: (ctx) => _ReferralSheet(firestore: firestore, me: me, forMother: forMother),
     );
   }
 
@@ -604,6 +641,116 @@ class _AddRecordSheetState extends State<_AddRecordSheet> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ReferralSheet extends StatefulWidget {
+  final FirestoreService firestore;
+  final AppUser me;
+  final AppUser forMother;
+  const _ReferralSheet({required this.firestore, required this.me, required this.forMother});
+
+  @override
+  State<_ReferralSheet> createState() => _ReferralSheetState();
+}
+
+class _ReferralSheetState extends State<_ReferralSheet> {
+  final _hospitalNameController = TextEditingController();
+  final _reasonController = TextEditingController();
+  AppUser? _selectedHospital;
+  bool _generating = false;
+
+  @override
+  void dispose() {
+    _hospitalNameController.dispose();
+    _reasonController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _generate() async {
+    final hospitalName = _selectedHospital?.name ?? _hospitalNameController.text.trim();
+    if (hospitalName.isEmpty || _reasonController.text.trim().isEmpty) return;
+    setState(() => _generating = true);
+    try {
+      final profile = await widget.firestore.watchPregnancyProfile(widget.forMother.uid).first;
+      await ReportService.generateReferralLetterPdf(
+        mother: widget.forMother,
+        profile: profile,
+        referringChw: widget.me,
+        hospitalName: hospitalName,
+        reason: _reasonController.text.trim(),
+      );
+      // Only persisted (so the Hospital's own "Referrals" tab can see it)
+      // when a registered Hospital account was actually selected — a
+      // free-typed name has no account to route it to.
+      if (_selectedHospital != null) {
+        await widget.firestore.createReferral(Referral(
+          id: '',
+          motherId: widget.forMother.uid,
+          motherName: widget.forMother.name,
+          chwId: widget.me.uid,
+          chwName: widget.me.name,
+          hospitalId: _selectedHospital!.uid,
+          hospitalName: _selectedHospital!.name,
+          reason: _reasonController.text.trim(),
+          createdAt: DateTime.now(),
+        ));
+      }
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not generate letter: $e')));
+      }
+      if (mounted) setState(() => _generating = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: AppSpacing.edgeMargin,
+        right: AppSpacing.edgeMargin,
+        top: AppSpacing.md,
+        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.md,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Referral Letter for ${widget.forMother.name}', style: Theme.of(context).textTheme.headlineSmall),
+          const SizedBox(height: 16),
+          StreamBuilder<List<AppUser>>(
+            stream: widget.firestore.watchUsersByRole(UserRole.hospital),
+            builder: (context, snapshot) {
+              final hospitals = snapshot.data ?? [];
+              if (hospitals.isEmpty) {
+                // No registered Hospital accounts yet — fall back to a
+                // free-text name (PDF only, nothing to route to in-app).
+                return TextField(controller: _hospitalNameController, decoration: const InputDecoration(labelText: 'Referring to (hospital/clinic name)'));
+              }
+              return DropdownButtonFormField<AppUser>(
+                value: _selectedHospital,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Referring to (registered hospital)'),
+                items: hospitals.map((h) => DropdownMenuItem(value: h, child: Text(h.name, overflow: TextOverflow.ellipsis))).toList(),
+                onChanged: (h) => setState(() => _selectedHospital = h),
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          TextField(controller: _reasonController, maxLines: 3, decoration: const InputDecoration(labelText: 'Reason for referral')),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _generating ? null : _generate,
+              child: Text(_generating ? 'Generating...' : 'Generate Letter'),
+            ),
+          ),
+        ],
       ),
     );
   }
