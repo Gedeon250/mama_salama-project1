@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/user_models.dart';
+import '../providers/locale_provider.dart';
 import '../services/firestore_service.dart';
+import '../l10n/app_strings.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
+import '../widgets/audio_message_player.dart';
 import 'video_lesson_screen.dart';
 import 'nutrition_resources_screen.dart';
 
@@ -15,7 +19,15 @@ class EducationCenterScreen extends StatefulWidget {
 
 class _EducationCenterScreenState extends State<EducationCenterScreen> {
   String _query = '';
-  String _language = 'EN';
+
+  // Bundled placeholder audio (Gap 2). Guarantees a working audio demo even
+  // before any `audio`-format lesson is added in Firestore. Swap the .m4a
+  // files under assets/audio/ for real Kinyarwanda recordings.
+  static const _bundledAudio = <(String title, String asset)>[
+    ('Danger signs in pregnancy', 'audio/danger_signs.m4a'),
+    ('Nutrition during pregnancy', 'audio/nutrition.m4a'),
+    ('Care after birth', 'audio/postpartum.m4a'),
+  ];
 
   IconData _formatIcon(EducationFormat f) {
     switch (f) {
@@ -50,17 +62,23 @@ class _EducationCenterScreenState extends State<EducationCenterScreen> {
               AppSpacing.edgeMargin, AppSpacing.sm, AppSpacing.edgeMargin, AppSpacing.xl,
             ),
             children: [
-          Row(
-            children: [
-              const Icon(Icons.language, size: 18, color: AppColors.secondary),
-              const SizedBox(width: 6),
-              Text('EN | RW | SW | FR', style: const TextStyle(fontSize: 12, color: AppColors.secondary)),
-              const Spacer(),
-              TextButton(
-                onPressed: () => setState(() => _language = _language == 'EN' ? 'RW' : 'EN'),
-                child: Text('Change ($_language)'),
-              ),
-            ],
+          Consumer<LocaleProvider>(
+            builder: (context, locale, _) => Row(
+              children: [
+                const Icon(Icons.language, size: 18, color: AppColors.secondary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    '${context.tr(StrKey.langEnglish)} | ${context.tr(StrKey.langKinyarwanda)}',
+                    style: const TextStyle(fontSize: 12, color: AppColors.secondary),
+                  ),
+                ),
+                TextButton(
+                  onPressed: locale.toggle,
+                  child: Text('${context.tr(StrKey.eduChangeLanguage)} (${locale.isKinyarwanda ? 'RW' : 'EN'})'),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 8),
           TextField(
@@ -123,6 +141,14 @@ class _EducationCenterScreenState extends State<EducationCenterScreen> {
           ),
           const SizedBox(height: AppSpacing.md),
 
+          const SectionHeader(title: 'Audio Health Messages'),
+          const SizedBox(height: 12),
+          ..._bundledAudio.map((a) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: BentoCard(child: AudioMessagePlayer(source: a.$2, title: a.$1)),
+              )),
+          const SizedBox(height: AppSpacing.md),
+
           const SectionHeader(title: 'All Topics'),
           const SizedBox(height: 12),
           if (items.isEmpty) const BentoCard(child: EmptyHint(text: 'No lessons yet — check back soon.')),
@@ -132,31 +158,46 @@ class _EducationCenterScreenState extends State<EducationCenterScreen> {
                   onTap: item.format == EducationFormat.video
                       ? () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const VideoLessonScreen()))
                       : null,
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(color: AppColors.onTertiaryContainer, borderRadius: BorderRadius.circular(AppRadius.md)),
-                        child: Icon(_formatIcon(item.format), color: AppColors.primary),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(item.title, style: const TextStyle(fontWeight: FontWeight.w700)),
-                            Text(item.description, style: const TextStyle(fontSize: 12, color: AppColors.secondary), maxLines: 2, overflow: TextOverflow.ellipsis),
-                            const SizedBox(height: 4),
-                            Row(
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(color: AppColors.onTertiaryContainer, borderRadius: BorderRadius.circular(AppRadius.md)),
+                            child: Icon(_formatIcon(item.format), color: AppColors.primary),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                PillChip(label: item.category),
-                                const SizedBox(width: 6),
-                                Text(item.durationOrLength, style: const TextStyle(fontSize: 11, color: AppColors.outline)),
+                                Text(item.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                                Text(item.description, style: const TextStyle(fontSize: 12, color: AppColors.secondary), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    PillChip(label: item.category),
+                                    const SizedBox(width: 6),
+                                    Text(item.durationOrLength, style: const TextStyle(fontSize: 11, color: AppColors.outline)),
+                                  ],
+                                ),
                               ],
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
+                      // Audio lessons get an inline player (Gap 2). Falls back to
+                      // a bundled clip if no media URL was set on the content.
+                      if (item.format == EducationFormat.audio) ...[
+                        const SizedBox(height: 8),
+                        AudioMessagePlayer(
+                          source: (item.mediaUrl == null || item.mediaUrl!.isEmpty)
+                              ? 'audio/danger_signs.m4a'
+                              : item.mediaUrl!,
+                        ),
+                      ],
                     ],
                   ),
                 ),

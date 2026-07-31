@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 import '../models/user_models.dart';
 import '../providers/app_data.dart';
 import '../providers/session_provider.dart';
+import '../providers/locale_provider.dart';
 import '../services/firestore_service.dart';
+import '../l10n/app_strings.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 
@@ -90,7 +92,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
             padding: EdgeInsets.zero,
             child: Column(
               children: [
-                _tile(Icons.language_outlined, 'Language', 'English'),
+                Consumer<LocaleProvider>(
+                  builder: (context, locale, _) => Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.language_outlined, color: AppColors.secondary),
+                            const SizedBox(width: 12),
+                            Text(context.tr(StrKey.profileLanguage), style: const TextStyle(fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        SegmentedButton<AppLanguage>(
+                          showSelectedIcon: false,
+                          segments: [
+                            ButtonSegment(value: AppLanguage.en, label: Text(context.tr(StrKey.langEnglish))),
+                            ButtonSegment(value: AppLanguage.rw, label: Text(context.tr(StrKey.langKinyarwanda))),
+                          ],
+                          selected: {locale.language},
+                          onSelectionChanged: (s) => locale.setLanguage(s.first),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
                 const Divider(height: 1),
                 _tile(Icons.emergency_outlined, 'Emergency Contacts', '${profile.emergencyContactsCount} contacts'),
                 const Divider(height: 1),

@@ -165,8 +165,15 @@ class FirestoreService {
 
   // ----- Help requests (SOS + general "I need something") -----
 
-  Future<String> createHelpRequest(HelpRequest request) async {
-    final ref = await _requests.add(request.toDoc());
+  /// Creates the request and returns its id *immediately*, generated
+  /// client-side, so the SOS screen can track it even with no connectivity.
+  /// The write itself is fire-and-forget: Firestore's offline cache commits
+  /// it locally (listeners fire at once via latency compensation) and syncs
+  /// to the server when the network returns. Awaiting `set()` would instead
+  /// hang until the server acknowledges — unacceptable for an emergency.
+  String createHelpRequest(HelpRequest request) {
+    final ref = _requests.doc();
+    ref.set(request.toDoc());
     return ref.id;
   }
 
@@ -195,16 +202,37 @@ class FirestoreService {
         .map((snap) => snap.docs.map((d) => HelpRequest.fromDoc(d.id, d.data())).toList());
   }
 
-  Future<void> assignRequest({required String requestId, required String chwId, required String chwName}) {
+  Future<void> assignRequest({
+    required String requestId,
+    required String chwId,
+    required String chwName,
+    String? chwPhone,
+  }) {
     return _requests.doc(requestId).update({
       'assignedChwId': chwId,
       'assignedChwName': chwName,
+      if (chwPhone != null) 'assignedChwPhone': chwPhone,
       'status': RequestStatus.assigned.name,
     });
   }
 
   Future<void> resolveRequest(String requestId) {
     return _requests.doc(requestId).update({'status': RequestStatus.resolved.name});
+  }
+
+  /// A CHW records that transport (a pre-registered driver) has been arranged
+  /// for a request. The mother's SOS screen watches this and shows the driver
+  /// with a tap-to-call button (Gap 4).
+  Future<void> arrangeTransport({
+    required String requestId,
+    required String driverName,
+    required String driverPhone,
+  }) {
+    return _requests.doc(requestId).update({
+      'transportStatus': TransportStatus.arranged.name,
+      'driverName': driverName,
+      'driverPhone': driverPhone,
+    });
   }
 
   // ----- Appointments -----

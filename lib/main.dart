@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'providers/app_data.dart';
 import 'providers/session_provider.dart';
+import 'providers/locale_provider.dart';
 import 'services/auth_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/auth/auth_gate.dart';
@@ -30,6 +31,8 @@ class MamaSalamaApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AppData()),
         // Real Firebase-backed session: auth + role + live requests/chat.
         ChangeNotifierProvider(create: (_) => SessionProvider(AuthService())),
+        // Chosen language (Kinyarwanda/English), persisted across launches.
+        ChangeNotifierProvider(create: (_) => LocaleProvider()),
       ],
       child: MaterialApp(
         title: 'MamaSalama',

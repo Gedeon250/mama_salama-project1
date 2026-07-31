@@ -332,9 +332,22 @@ enum RequestType { sos, generalHelp }
 
 enum RequestStatus { pending, assigned, resolved }
 
+/// Whether emergency transport (a pre-registered driver) has been arranged
+/// for a request. See the design doc's journey map: "the app displays
+/// pre-registered drivers; a call is required to verify."
+enum TransportStatus { none, arranged }
+
+TransportStatus transportStatusFromString(String? value) =>
+    value == 'arranged' ? TransportStatus.arranged : TransportStatus.none;
+
 /// Created whenever a mother taps SOS or "Request Help". Admin sees every
 /// one of these live on the Admin dashboard; assigning a CHW moves it from
 /// `pending` to `assigned`.
+///
+/// SOS requests also carry the mother's GPS location (Gap 3) so the CHW can
+/// reach her, and a transport section (Gap 4) the CHW fills in once a driver
+/// is arranged. All of these are nullable so requests written before this
+/// change still parse.
 class HelpRequest {
   final String id;
   final String motherId;
@@ -344,7 +357,18 @@ class HelpRequest {
   RequestStatus status;
   String? assignedChwId;
   String? assignedChwName;
+  String? assignedChwPhone;
   final DateTime createdAt;
+
+  // Gap 3 — location attached to an SOS (null when unavailable/denied).
+  final double? lat;
+  final double? lng;
+  final double? accuracy;
+
+  // Gap 4 — transport coordinated by the CHW.
+  TransportStatus transportStatus;
+  String? driverName;
+  String? driverPhone;
 
   HelpRequest({
     required this.id,
@@ -355,10 +379,21 @@ class HelpRequest {
     this.status = RequestStatus.pending,
     this.assignedChwId,
     this.assignedChwName,
+    this.assignedChwPhone,
     required this.createdAt,
+    this.lat,
+    this.lng,
+    this.accuracy,
+    this.transportStatus = TransportStatus.none,
+    this.driverName,
+    this.driverPhone,
   });
 
+  /// True when a usable GPS fix is attached.
+  bool get hasLocation => lat != null && lng != null;
+
   factory HelpRequest.fromDoc(String id, Map<String, dynamic> data) {
+    double? toDouble(dynamic v) => v == null ? null : (v as num).toDouble();
     return HelpRequest(
       id: id,
       motherId: data['motherId'] ?? '',
@@ -371,9 +406,16 @@ class HelpRequest {
       ),
       assignedChwId: data['assignedChwId'] as String?,
       assignedChwName: data['assignedChwName'] as String?,
+      assignedChwPhone: data['assignedChwPhone'] as String?,
       createdAt: (data['createdAt'] is Timestamp)
           ? (data['createdAt'] as Timestamp).toDate()
           : DateTime.now(),
+      lat: toDouble(data['lat']),
+      lng: toDouble(data['lng']),
+      accuracy: toDouble(data['accuracy']),
+      transportStatus: transportStatusFromString(data['transportStatus'] as String?),
+      driverName: data['driverName'] as String?,
+      driverPhone: data['driverPhone'] as String?,
     );
   }
 
@@ -385,7 +427,14 @@ class HelpRequest {
         'status': status.name,
         if (assignedChwId != null) 'assignedChwId': assignedChwId,
         if (assignedChwName != null) 'assignedChwName': assignedChwName,
+        if (assignedChwPhone != null) 'assignedChwPhone': assignedChwPhone,
         'createdAt': FieldValue.serverTimestamp(),
+        if (lat != null) 'lat': lat,
+        if (lng != null) 'lng': lng,
+        if (accuracy != null) 'accuracy': accuracy,
+        'transportStatus': transportStatus.name,
+        if (driverName != null) 'driverName': driverName,
+        if (driverPhone != null) 'driverPhone': driverPhone,
       };
 }
 
