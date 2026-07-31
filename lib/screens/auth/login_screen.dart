@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/session_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/form_validators.dart';
 import 'signup_screen.dart';
-
-final _emailFormat = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -38,7 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _submitting = true);
     final session = context.read<SessionProvider>();
-    final ok = await session.signIn(_emailController.text.trim(), _passwordController.text);
+    final ok = await session.signIn(FormValidators.sanitizeEmail(_emailController.text), _passwordController.text);
     if (!mounted) return;
     setState(() => _submitting = false);
     if (!ok) {
@@ -58,8 +57,8 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _forgotPassword() async {
-    final email = _emailController.text.trim();
-    if (email.isEmpty || !_emailFormat.hasMatch(email)) {
+    final email = FormValidators.sanitizeEmail(_emailController.text);
+    if (FormValidators.validateEmail(email) != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Enter your account email above, then tap Forgot password.')),
       );
@@ -105,11 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(labelText: 'Email'),
-                    validator: (v) {
-                      if (v == null || v.trim().isEmpty) return 'Enter your email';
-                      if (!_emailFormat.hasMatch(v.trim())) return 'Enter a valid email address';
-                      return null;
-                    },
+                    validator: FormValidators.validateEmail,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(

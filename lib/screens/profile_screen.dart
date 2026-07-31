@@ -11,6 +11,7 @@ import '../services/cloudinary_service.dart';
 import '../services/firestore_service.dart';
 import '../services/notification_prefs.dart';
 import '../theme/app_theme.dart';
+import '../utils/form_validators.dart';
 import '../widgets/common.dart';
 import '../widgets/user_avatar.dart';
 
@@ -81,9 +82,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final picked = await ImagePicker().pickImage(source: source, maxWidth: 1024, imageQuality: 85);
     if (picked == null) return;
 
+    final file = File(picked.path);
+    final error = FormValidators.validateAttachment(file, allowedExtensions: const ['png', 'jpg', 'jpeg']);
+    if (error != null) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      return;
+    }
+
     setState(() => _uploadingPhoto = true);
     try {
-      final url = await _cloudinary.uploadProfilePicture(user.uid, File(picked.path));
+      final url = await _cloudinary.uploadProfilePicture(user.uid, file);
       await _firestore.updateUserProfile(user.uid, photoUrl: url);
     } catch (e) {
       if (mounted) {
@@ -129,7 +137,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 TextFormField(
                   controller: phoneController,
                   keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(labelText: 'Phone (optional)'),
+                  decoration: const InputDecoration(labelText: 'Phone (optional, 10 digits)'),
+                  validator: (v) => FormValidators.validatePhone(v, required: false),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -149,7 +158,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             await _firestore.updateUserProfile(
                               user.uid,
                               name: nameController.text.trim(),
-                              phone: phoneController.text.trim().isEmpty ? null : phoneController.text.trim(),
+                              phone: FormValidators.sanitizePhone(phoneController.text).isEmpty
+                                  ? null
+                                  : FormValidators.sanitizePhone(phoneController.text),
                             );
                             if (sheetContext.mounted) Navigator.of(sheetContext).pop();
                           },
@@ -221,8 +232,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ElevatedButton(
                             onPressed: () {
                               final name = nameController.text.trim();
-                              final phone = phoneController.text.trim();
-                              if (name.isEmpty || phone.isEmpty) return;
+                              final phone = FormValidators.sanitizePhone(phoneController.text);
+                              if (name.isEmpty) return;
+                              if (FormValidators.validatePhone(phone, required: true) != null) {
+                                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                                  const SnackBar(content: Text('Phone number must be exactly 10 digits')),
+                                );
+                                return;
+                              }
                               Navigator.pop(dialogContext, EmergencyContact(name: name, phone: phone));
                             },
                             child: const Text('Add'),
@@ -457,6 +474,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ? 'None saved'
                         : '${user.emergencyContacts.length} contact${user.emergencyContacts.length == 1 ? '' : 's'}',
                     onTap: () => _showEmergencyContactsSheet(context, user),
+                  ),
+                  const Divider(height: 1),
+                  StreamBuilder<PregnancyProfile>(
+                    stream: _firestore.watchPregnancyProfile(user.uid),
+                    builder: (context, snap) {
+                      final profile = snap.data;
+                      final sharing = profile?.shareAttachmentsWithChw ?? true;
+                      final count = profile?.attachments.length ?? 0;
+                      return SwitchListTile(
+                        secondary: Icon(Icons.folder_shared_outlined, color: AppColors.primary),
+                        title: const Text('Share docs with CHW'),
+                        subtitle: Text(count == 0 ? 'No documents attached yet' : '$count document${count == 1 ? '' : 's'}'),
+                        value: sharing,
+                        activeThumbColor: AppColors.primary,
+                        onChanged: profile == null
+                            ? null
+                            : (v) {
+                                _firestore.updatePregnancyProfile(
+                                  user.uid,
+                                  profile.copyWith(shareAttachmentsWithChw: v),
+                                );
+                              },
+                      );
+                    },
                   ),
                   const Divider(height: 1),
                   _tile(Icons.accessibility_new_outlined, 'Accessibility', 'Large text, screen reader'),

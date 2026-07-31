@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/user_models.dart';
 import '../../providers/session_provider.dart';
+import '../../services/cloudinary_service.dart';
 import '../../services/firestore_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/form_validators.dart';
+import '../../widgets/pregnancy_attachments_editor.dart';
 
 /// One-time gate after email verify for mothers who have never saved a
 /// pregnancyProfile. Phone is collected here when missing (e.g. Google signup).
@@ -17,12 +20,15 @@ class PregnancyOnboardingScreen extends StatefulWidget {
 class _PregnancyOnboardingScreenState extends State<PregnancyOnboardingScreen> {
   final _formKey = GlobalKey<FormState>();
   final _weekController = TextEditingController(text: '4');
-  final _bloodTypeController = TextEditingController();
+  final _bloodTypeController = TextEditingController(text: 'Unknown');
   final _allergiesController = TextEditingController();
   final _phoneController = TextEditingController();
   DateTime _dueDate = DateTime.now().add(const Duration(days: 259));
   bool _saving = false;
+  bool _shareWithChw = true;
+  List<PendingPregnancyFile> _pendingFiles = [];
   final _firestore = FirestoreService();
+  final _cloudinary = CloudinaryService();
 
   static const _bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown'];
 
@@ -52,30 +58,50 @@ class _PregnancyOnboardingScreenState extends State<PregnancyOnboardingScreen> {
     final user = context.read<SessionProvider>().currentUser!;
     setState(() => _saving = true);
 
-    final week = int.tryParse(_weekController.text.trim()) ?? 4;
-    final blood = _bloodTypeController.text.trim().isEmpty ? 'Unknown' : _bloodTypeController.text.trim();
-    final allergies = _allergiesController.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+    try {
+      final week = int.tryParse(_weekController.text.trim()) ?? 4;
+      final blood = _bloodTypeController.text.trim().isEmpty ? 'Unknown' : _bloodTypeController.text.trim();
+      final allergies = _allergiesController.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
 
-    await _firestore.updatePregnancyProfile(
-      user.uid,
-      PregnancyProfile(
-        pregnancyWeek: week.clamp(1, 42),
-        dueDate: _dueDate,
-        bloodType: blood,
-        allergies: allergies,
-        babySizeComparison: 'Poppy seed',
-        isHighRisk: false,
-      ),
-    );
+      final attachments = <PregnancyAttachment>[];
+      for (final pending in _pendingFiles) {
+        final url = await _cloudinary.uploadPregnancyAttachment(user.uid, pending.file);
+        final lower = pending.fileName.toLowerCase();
+        attachments.add(PregnancyAttachment(
+          url: url,
+          fileName: pending.fileName,
+          contentType: lower.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg',
+          uploadedAt: DateTime.now(),
+        ));
+      }
 
-    final phone = _phoneController.text.trim();
-    if (phone.isNotEmpty) {
-      await _firestore.updateUserProfile(user.uid, phone: phone);
+      await _firestore.updatePregnancyProfile(
+        user.uid,
+        PregnancyProfile(
+          pregnancyWeek: week.clamp(1, 42),
+          dueDate: _dueDate,
+          bloodType: blood,
+          allergies: allergies,
+          babySizeComparison: 'Poppy seed',
+          isHighRisk: false,
+          attachments: attachments,
+          shareAttachmentsWithChw: _shareWithChw,
+        ),
+      );
+
+      final phone = FormValidators.sanitizePhone(_phoneController.text);
+      if (phone.isNotEmpty) {
+        await _firestore.updateUserProfile(user.uid, phone: phone);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      setState(() => _saving = false);
+      return;
     }
 
     if (!mounted) return;
     setState(() => _saving = false);
-    // SessionProvider watches the user doc; hasPregnancyProfile flips and AuthGate rebuilds.
   }
 
   @override
@@ -126,7 +152,7 @@ class _PregnancyOnboardingScreenState extends State<PregnancyOnboardingScreen> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: _bloodTypes.contains(_bloodTypeController.text) ? _bloodTypeController.text : 'Unknown',
+                    initialValue: _bloodTypes.contains(_bloodTypeController.text) ? _bloodTypeController.text : 'Unknown',
                     decoration: const InputDecoration(labelText: 'Blood type'),
                     items: _bloodTypes.map((b) => DropdownMenuItem(value: b, child: Text(b))).toList(),
                     onChanged: (v) {
@@ -142,7 +168,18 @@ class _PregnancyOnboardingScreenState extends State<PregnancyOnboardingScreen> {
                   TextFormField(
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(labelText: 'Phone (recommended)'),
+                    decoration: const InputDecoration(labelText: 'Phone (recommended, 10 digits)'),
+                    validator: (v) => FormValidators.validatePhone(v, required: false),
+                  ),
+                  const SizedBox(height: 16),
+                  PregnancyAttachmentsEditor(
+                    existing: const [],
+                    pending: _pendingFiles,
+                    shareWithChw: _shareWithChw,
+                    onShareChanged: (v) => setState(() => _shareWithChw = v),
+                    onExistingChanged: (_) {},
+                    onPendingChanged: (v) => setState(() => _pendingFiles = v),
+                    onError: (msg) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg))),
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(

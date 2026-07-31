@@ -5,9 +5,11 @@ import 'package:provider/provider.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../models/user_models.dart';
 import '../providers/session_provider.dart';
+import '../services/cloudinary_service.dart';
 import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
+import '../widgets/pregnancy_attachments_editor.dart';
 import 'medical_records_screen.dart';
 import 'lab_results_screen.dart';
 import 'vaccinations_screen.dart';
@@ -132,8 +134,14 @@ class HealthScreen extends StatelessWidget {
                                 children: [
                                   Icon(Icons.monitor_weight_outlined, color: AppColors.primary, size: 18),
                                   const SizedBox(width: 6),
-                                  Text(l10n.weightTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                                  const Spacer(),
+                                  Expanded(
+                                    child: Text(
+                                      l10n.weightTitle,
+                                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
                                   Icon(Icons.add, size: 16, color: AppColors.primary),
                                 ],
                               ),
@@ -166,8 +174,14 @@ class HealthScreen extends StatelessWidget {
                                 children: [
                                   Icon(Icons.favorite_border, color: AppColors.error, size: 18),
                                   const SizedBox(width: 6),
-                                  Text(l10n.bloodPressureTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                                  const Spacer(),
+                                  Expanded(
+                                    child: Text(
+                                      l10n.bloodPressureTitle,
+                                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
                                   Icon(Icons.add, size: 16, color: AppColors.primary),
                                 ],
                               ),
@@ -196,8 +210,14 @@ class HealthScreen extends StatelessWidget {
                                 children: [
                                   Icon(Icons.bloodtype_outlined, color: AppColors.tertiary, size: 18),
                                   const SizedBox(width: 6),
-                                  Text(l10n.bloodSugarTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                                  const Spacer(),
+                                  Expanded(
+                                    child: Text(
+                                      l10n.bloodSugarTitle,
+                                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
                                   Icon(Icons.add, size: 16, color: AppColors.primary),
                                 ],
                               ),
@@ -262,6 +282,11 @@ class HealthScreen extends StatelessWidget {
     final allergiesController = TextEditingController(text: current.allergies.join(', '));
     final babySizeController = TextEditingController(text: current.babySizeComparison);
     DateTime dueDate = current.dueDate;
+    var attachments = List<PregnancyAttachment>.from(current.attachments);
+    var pending = <PendingPregnancyFile>[];
+    var shareWithChw = current.shareAttachmentsWithChw;
+    var saving = false;
+    final cloudinary = CloudinaryService();
 
     showModalBottomSheet(
       context: context,
@@ -276,73 +301,107 @@ class HealthScreen extends StatelessWidget {
               top: AppSpacing.md,
               bottom: MediaQuery.of(ctx).viewInsets.bottom + AppSpacing.md,
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(l10n.editPregnancyInfoTitle, style: Theme.of(ctx).textTheme.headlineSmall),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: weekController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: l10n.pregnancyWeekLabel),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.calendar_today_outlined, size: 16),
-                  label: Text(l10n.dueDateLabel('${dueDate.year}-${dueDate.month.toString().padLeft(2, '0')}-${dueDate.day.toString().padLeft(2, '0')}')),
-                  onPressed: () async {
-                    final picked = await showDatePicker(
-                      context: ctx,
-                      initialDate: dueDate,
-                      firstDate: DateTime.now().subtract(const Duration(days: 280)),
-                      lastDate: DateTime.now().add(const Duration(days: 300)),
-                    );
-                    if (picked != null) setState(() => dueDate = picked);
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: bloodTypeController,
-                  decoration: InputDecoration(labelText: l10n.bloodTypeLabel),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: allergiesController,
-                  decoration: InputDecoration(labelText: l10n.allergiesLabel),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: babySizeController,
-                  decoration: InputDecoration(labelText: l10n.babySizeComparisonLabel),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // Don't await: Firestore's write future only resolves
-                      // after a server round-trip, so awaiting it would hang
-                      // the sheet open indefinitely while offline. The local
-                      // cache (and this screen's stream) updates immediately
-                      // regardless, and the write queues until back online.
-                      firestore.updatePregnancyProfile(
-                        uid,
-                        PregnancyProfile(
-                          pregnancyWeek: int.tryParse(weekController.text.trim()) ?? current.pregnancyWeek,
-                          dueDate: dueDate,
-                          bloodType: bloodTypeController.text.trim().isEmpty ? current.bloodType : bloodTypeController.text.trim(),
-                          allergies: allergiesController.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList(),
-                          babySizeComparison: babySizeController.text.trim().isEmpty ? current.babySizeComparison : babySizeController.text.trim(),
-                          isHighRisk: current.isHighRisk,
-                        ),
-                      );
-                      Navigator.of(ctx).pop();
-                    },
-                    child: Text(l10n.saveButton),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l10n.editPregnancyInfoTitle, style: Theme.of(ctx).textTheme.headlineSmall),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: weekController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(labelText: l10n.pregnancyWeekLabel),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.calendar_today_outlined, size: 16),
+                    label: Text(l10n.dueDateLabel('${dueDate.year}-${dueDate.month.toString().padLeft(2, '0')}-${dueDate.day.toString().padLeft(2, '0')}')),
+                    onPressed: () async {
+                      final picked = await showDatePicker(
+                        context: ctx,
+                        initialDate: dueDate,
+                        firstDate: DateTime.now().subtract(const Duration(days: 280)),
+                        lastDate: DateTime.now().add(const Duration(days: 300)),
+                      );
+                      if (picked != null) setState(() => dueDate = picked);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: bloodTypeController,
+                    decoration: InputDecoration(labelText: l10n.bloodTypeLabel),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: allergiesController,
+                    decoration: InputDecoration(labelText: l10n.allergiesLabel),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: babySizeController,
+                    decoration: InputDecoration(labelText: l10n.babySizeComparisonLabel),
+                  ),
+                  const SizedBox(height: 16),
+                  PregnancyAttachmentsEditor(
+                    existing: attachments,
+                    pending: pending,
+                    shareWithChw: shareWithChw,
+                    onShareChanged: (v) => setState(() => shareWithChw = v),
+                    onExistingChanged: (v) => setState(() => attachments = v),
+                    onPendingChanged: (v) => setState(() => pending = v),
+                    onError: (msg) => ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(msg))),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: saving
+                          ? null
+                          : () async {
+                              setState(() => saving = true);
+                              try {
+                                final uploaded = List<PregnancyAttachment>.from(attachments);
+                                for (final p in pending) {
+                                  final url = await cloudinary.uploadPregnancyAttachment(uid, p.file);
+                                  final lower = p.fileName.toLowerCase();
+                                  uploaded.add(PregnancyAttachment(
+                                    url: url,
+                                    fileName: p.fileName,
+                                    contentType: lower.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg',
+                                    uploadedAt: DateTime.now(),
+                                  ));
+                                }
+                                await firestore.updatePregnancyProfile(
+                                  uid,
+                                  PregnancyProfile(
+                                    pregnancyWeek: int.tryParse(weekController.text.trim()) ?? current.pregnancyWeek,
+                                    dueDate: dueDate,
+                                    bloodType: bloodTypeController.text.trim().isEmpty ? current.bloodType : bloodTypeController.text.trim(),
+                                    allergies: allergiesController.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList(),
+                                    babySizeComparison: babySizeController.text.trim().isEmpty
+                                        ? current.babySizeComparison
+                                        : babySizeController.text.trim(),
+                                    isHighRisk: current.isHighRisk,
+                                    attachments: uploaded,
+                                    shareAttachmentsWithChw: shareWithChw,
+                                  ),
+                                );
+                                if (ctx.mounted) Navigator.of(ctx).pop();
+                              } catch (e) {
+                                setState(() => saving = false);
+                                if (ctx.mounted) {
+                                  ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('$e')));
+                                }
+                              }
+                            },
+                      child: saving
+                          ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : Text(l10n.saveButton),
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         });

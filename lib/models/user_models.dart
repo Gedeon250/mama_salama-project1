@@ -164,6 +164,38 @@ class ChwApplication {
 
 /// Stored as a `pregnancyProfile` map on the mother's own users/{uid} doc
 /// (not a separate collection) — see FirestoreService.watchPregnancyProfile.
+class PregnancyAttachment {
+  final String url;
+  final String fileName;
+  final String contentType;
+  final DateTime uploadedAt;
+
+  PregnancyAttachment({
+    required this.url,
+    required this.fileName,
+    required this.contentType,
+    required this.uploadedAt,
+  });
+
+  factory PregnancyAttachment.fromMap(Map<String, dynamic> map) {
+    return PregnancyAttachment(
+      url: map['url'] as String? ?? '',
+      fileName: map['fileName'] as String? ?? 'document',
+      contentType: map['contentType'] as String? ?? 'application/octet-stream',
+      uploadedAt: (map['uploadedAt'] is Timestamp)
+          ? (map['uploadedAt'] as Timestamp).toDate()
+          : DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'url': url,
+        'fileName': fileName,
+        'contentType': contentType,
+        'uploadedAt': Timestamp.fromDate(uploadedAt),
+      };
+}
+
 class PregnancyProfile {
   final int pregnancyWeek;
   final DateTime dueDate;
@@ -171,6 +203,9 @@ class PregnancyProfile {
   final List<String> allergies;
   final String babySizeComparison;
   final bool isHighRisk;
+  final List<PregnancyAttachment> attachments;
+  /// When false, assigned CHWs should not be shown pregnancy documents.
+  final bool shareAttachmentsWithChw;
 
   PregnancyProfile({
     required this.pregnancyWeek,
@@ -179,6 +214,8 @@ class PregnancyProfile {
     required this.allergies,
     required this.babySizeComparison,
     this.isHighRisk = false,
+    this.attachments = const [],
+    this.shareAttachmentsWithChw = true,
   });
 
   int get trimester => pregnancyWeek <= 13 ? 1 : (pregnancyWeek <= 26 ? 2 : 3);
@@ -193,6 +230,7 @@ class PregnancyProfile {
       );
 
   factory PregnancyProfile.fromMap(Map<String, dynamic> map) {
+    final attachmentsRaw = map['attachments'] as List?;
     return PregnancyProfile(
       pregnancyWeek: (map['pregnancyWeek'] as num?)?.toInt() ?? 4,
       dueDate: (map['dueDate'] is Timestamp)
@@ -202,6 +240,12 @@ class PregnancyProfile {
       allergies: (map['allergies'] as List?)?.map((e) => e.toString()).toList() ?? [],
       babySizeComparison: map['babySizeComparison'] ?? 'Poppy seed',
       isHighRisk: map['isHighRisk'] ?? false,
+      attachments: attachmentsRaw
+              ?.whereType<Map>()
+              .map((e) => PregnancyAttachment.fromMap(Map<String, dynamic>.from(e)))
+              .toList() ??
+          const [],
+      shareAttachmentsWithChw: map['shareAttachmentsWithChw'] as bool? ?? true,
     );
   }
 
@@ -212,7 +256,31 @@ class PregnancyProfile {
         'allergies': allergies,
         'babySizeComparison': babySizeComparison,
         'isHighRisk': isHighRisk,
+        'attachments': attachments.map((a) => a.toMap()).toList(),
+        'shareAttachmentsWithChw': shareAttachmentsWithChw,
       };
+
+  PregnancyProfile copyWith({
+    int? pregnancyWeek,
+    DateTime? dueDate,
+    String? bloodType,
+    List<String>? allergies,
+    String? babySizeComparison,
+    bool? isHighRisk,
+    List<PregnancyAttachment>? attachments,
+    bool? shareAttachmentsWithChw,
+  }) {
+    return PregnancyProfile(
+      pregnancyWeek: pregnancyWeek ?? this.pregnancyWeek,
+      dueDate: dueDate ?? this.dueDate,
+      bloodType: bloodType ?? this.bloodType,
+      allergies: allergies ?? this.allergies,
+      babySizeComparison: babySizeComparison ?? this.babySizeComparison,
+      isHighRisk: isHighRisk ?? this.isHighRisk,
+      attachments: attachments ?? this.attachments,
+      shareAttachmentsWithChw: shareAttachmentsWithChw ?? this.shareAttachmentsWithChw,
+    );
+  }
 }
 
 /// One doc per calendar day at users/{uid}/vitals/{yyyy-MM-dd}. Weight, BP,
