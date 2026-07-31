@@ -182,7 +182,7 @@ class _RequestCard extends StatelessWidget {
             ),
             for (final d in _presetDrivers)
               ListTile(
-                leading: const Icon(Icons.local_taxi_outlined, color: AppColors.primary),
+                leading: Icon(Icons.local_taxi_outlined, color: AppColors.primary),
                 title: Text(d.$1),
                 subtitle: Text(d.$2),
                 onTap: () => Navigator.of(ctx).pop(d),
@@ -222,12 +222,12 @@ class _RequestCard extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(Icons.location_on, size: 16, color: AppColors.error),
+                Icon(Icons.location_on, size: 16, color: AppColors.error),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
                     '${request.lat!.toStringAsFixed(5)}, ${request.lng!.toStringAsFixed(5)}',
-                    style: const TextStyle(fontSize: 12, color: AppColors.secondary),
+                    style: TextStyle(fontSize: 12, color: AppColors.secondary),
                   ),
                 ),
                 TextButton.icon(
@@ -239,10 +239,10 @@ class _RequestCard extends StatelessWidget {
             ),
           ] else if (isSos) ...[
             const SizedBox(height: 8),
-            const Row(
+            Row(
               children: [
                 Icon(Icons.location_off_outlined, size: 16, color: AppColors.secondary),
-                SizedBox(width: 4),
+                const SizedBox(width: 4),
                 Text('No location shared', style: TextStyle(fontSize: 12, color: AppColors.secondary)),
               ],
             ),
@@ -253,12 +253,12 @@ class _RequestCard extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(Icons.local_taxi, size: 16, color: AppColors.primary),
+                Icon(Icons.local_taxi, size: 16, color: AppColors.primary),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
                     'Transport: ${request.driverName ?? 'driver'}',
-                    style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600),
                   ),
                 ),
                 if (request.driverPhone != null)

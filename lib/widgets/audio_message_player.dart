@@ -77,7 +77,7 @@ class _AudioMessagePlayerState extends State<AudioMessagePlayer> {
     if (_failed) {
       return Row(
         children: [
-          const Icon(Icons.error_outline, size: 18, color: AppColors.error),
+          Icon(Icons.error_outline, size: 18, color: AppColors.error),
           const SizedBox(width: 8),
           Expanded(child: Text('Could not play this message.', style: TextStyle(fontSize: 12, color: AppColors.error))),
           TextButton(onPressed: () => setState(() => _failed = false), child: const Text('Retry')),
@@ -109,7 +109,7 @@ class _AudioMessagePlayerState extends State<AudioMessagePlayer> {
               Padding(
                 padding: const EdgeInsets.only(left: 12),
                 child: Text('${_fmt(_position)} / ${_fmt(_duration)}',
-                    style: const TextStyle(fontSize: 11, color: AppColors.secondary)),
+                    style: TextStyle(fontSize: 11, color: AppColors.secondary)),
               ),
             ],
           ),

@@ -12,6 +12,7 @@ import '../../widgets/common.dart';
 import '../../widgets/chat_view.dart';
 import '../../widgets/user_avatar.dart';
 import '../messages_inbox_screen.dart';
+import '../video_lesson_screen.dart';
 
 class AdminShell extends StatefulWidget {
   const AdminShell({super.key});
@@ -831,6 +832,7 @@ class _LearnTab extends StatelessWidget {
                 .map((item) => Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: BentoCard(
+                        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VideoLessonScreen(item: item))),
                         child: Row(
                           children: [
                             Container(

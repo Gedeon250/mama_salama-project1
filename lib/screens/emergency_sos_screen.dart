@@ -181,9 +181,9 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with SingleTick
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.wifi_protected_setup, size: 16, color: AppColors.error),
+                      Icon(Icons.wifi_protected_setup, size: 16, color: AppColors.error),
                       const SizedBox(width: 6),
-                      Text(l10n.connectingToDispatch, style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w600)),
+                      Text(l10n.connectingToDispatch, style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600)),
                     ],
                   ),
               ],
@@ -221,7 +221,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with SingleTick
           BentoCard(
             child: Text(
               l10n.emergencyContactsNotice(data.profile.emergencyContactsCount),
-              style: const TextStyle(fontSize: 13, color: AppColors.secondary),
+              style: TextStyle(fontSize: 13, color: AppColors.secondary),
             ),
           ),
         ],
@@ -248,11 +248,11 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with SingleTick
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                Text(distance, style: const TextStyle(fontSize: 12, color: AppColors.secondary)),
+                Text(distance, style: TextStyle(fontSize: 12, color: AppColors.secondary)),
               ],
             ),
           ),
-          const Icon(Icons.directions, color: AppColors.outline),
+          Icon(Icons.directions, color: AppColors.outline),
         ],
       ),
     );
@@ -291,14 +291,14 @@ class _LiveStatus extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(color: AppColors.onTertiaryContainer, borderRadius: BorderRadius.circular(AppRadius.md)),
-                child: const Icon(Icons.location_on_outlined, color: AppColors.primary),
+                child: Icon(Icons.location_on_outlined, color: AppColors.primary),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Live Status', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary)),
+                    Text('Live Status', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary)),
                     const SizedBox(height: 4),
                     Text(view.label, style: const TextStyle(fontSize: 13)),
                     const SizedBox(height: 8),
@@ -317,7 +317,7 @@ class _LiveStatus extends StatelessWidget {
                             hasLocation
                                 ? 'Your location was shared with the health worker.'
                                 : 'Location unavailable — describe where you are when they call.',
-                            style: const TextStyle(fontSize: 12, color: AppColors.secondary),
+                            style: TextStyle(fontSize: 12, color: AppColors.secondary),
                           ),
                         ),
                       ],
@@ -335,14 +335,14 @@ class _LiveStatus extends StatelessWidget {
           BentoCard(
             child: Row(
               children: [
-                const CircleAvatar(backgroundColor: AppColors.onTertiaryContainer, child: Icon(Icons.medical_services_outlined, color: AppColors.primary)),
+                CircleAvatar(backgroundColor: AppColors.onTertiaryContainer, child: Icon(Icons.medical_services_outlined, color: AppColors.primary)),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(chwName, style: const TextStyle(fontWeight: FontWeight.w700)),
-                      const Text('Responding health worker', style: TextStyle(fontSize: 12, color: AppColors.secondary)),
+                      Text('Responding health worker', style: TextStyle(fontSize: 12, color: AppColors.secondary)),
                     ],
                   ),
                 ),
@@ -362,14 +362,14 @@ class _LiveStatus extends StatelessWidget {
           BentoCard(
             child: Row(
               children: [
-                const CircleAvatar(backgroundColor: AppColors.onTertiaryContainer, child: Icon(Icons.local_taxi_outlined, color: AppColors.primary)),
+                CircleAvatar(backgroundColor: AppColors.onTertiaryContainer, child: Icon(Icons.local_taxi_outlined, color: AppColors.primary)),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(request?.driverName ?? 'Driver', style: const TextStyle(fontWeight: FontWeight.w700)),
-                      const Text('Transport arranged · call to confirm', style: TextStyle(fontSize: 12, color: AppColors.secondary)),
+                      Text('Transport arranged · call to confirm', style: TextStyle(fontSize: 12, color: AppColors.secondary)),
                     ],
                   ),
                 ),
@@ -394,9 +394,9 @@ class _LiveStatus extends StatelessWidget {
                 )
               : OutlinedButton.icon(
                   onPressed: onCancel,
-                  icon: const Icon(Icons.close, color: AppColors.error),
-                  label: const Text('Cancel Emergency Alert', style: TextStyle(color: AppColors.error)),
-                  style: OutlinedButton.styleFrom(side: const BorderSide(color: AppColors.error)),
+                  icon: Icon(Icons.close, color: AppColors.error),
+                  label: Text('Cancel Emergency Alert', style: TextStyle(color: AppColors.error)),
+                  style: OutlinedButton.styleFrom(side: BorderSide(color: AppColors.error)),
                 ),
         ),
       ],
