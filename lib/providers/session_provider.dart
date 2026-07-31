@@ -158,6 +158,8 @@ class SessionProvider extends ChangeNotifier {
 
   Future<void> signOut() => _authService.signOut();
 
+  Future<void> sendPasswordReset(String email) => _authService.sendPasswordReset(email);
+
   Future<bool> resendVerificationEmail() => _authService.resendVerificationEmail();
 
   /// Call after the user says they've clicked the link in their inbox.

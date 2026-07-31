@@ -64,7 +64,9 @@ class MessagesInboxScreen extends StatelessWidget {
     if (embedded) return body;
 
     return Scaffold(
-      appBar: useBrandAppBar ? const MamaAppBar(title: 'Messages') : AppBar(title: const Text('Messages')),
+      appBar: useBrandAppBar
+          ? const MamaAppBar(title: 'Messages', showBack: true, showMessages: false)
+          : AppBar(title: const Text('Messages')),
       body: body,
     );
   }

@@ -29,6 +29,26 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(motherId)).data.assignedChwId == request.auth.uid;
     }
 
+    // CHW Claim: may set assignedChwId on a mother doc to their own uid only.
+    function chwSelfAssigningMother(uid) {
+      return myRole() == 'chw' &&
+        resource.data.role == 'mother' &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['assignedChwId']) &&
+        request.resource.data.assignedChwId == request.auth.uid;
+    }
+
+    // Assigned CHW may toggle pregnancyProfile.isHighRisk only.
+    function assignedChwUpdatingHighRisk(uid) {
+      return myRole() == 'chw' &&
+        resource.data.role == 'mother' &&
+        resource.data.assignedChwId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pregnancyProfile']) &&
+        (
+          !('pregnancyProfile' in resource.data) ||
+          request.resource.data.pregnancyProfile.diff(resource.data.pregnancyProfile).affectedKeys().hasOnly(['isHighRisk'])
+        );
+    }
+
     // ---- users/{uid} : AppUser docs (mother / chw / admin) ----
     // Also holds a `pregnancyProfile` map field, covered by the same
     // read/update rules as the rest of the doc.
@@ -56,9 +76,12 @@ service cloud.firestore {
       // signed-in user (in particular a chwApplicant awaiting review)
       // could just self-write `role: 'chw'` and skip the whole approval
       // flow in ChwApplicationScreen / AdminShell.
+      // CHWs may self-assign on Claim and toggle high-risk for their mothers.
       allow update: if signedIn() && (
         (request.auth.uid == uid && request.resource.data.role == resource.data.role) ||
-        isAdmin()
+        isAdmin() ||
+        chwSelfAssigningMother(uid) ||
+        assignedChwUpdatingHighRisk(uid)
       );
       allow delete: if isAdmin();
 

@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../l10n/generated/app_localizations.dart';
@@ -7,6 +6,7 @@ import '../providers/session_provider.dart';
 import '../models/user_models.dart';
 import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/chat_view.dart';
 import '../widgets/common.dart';
 
 class EmergencySosScreen extends StatefulWidget {
@@ -21,40 +21,34 @@ class EmergencySosScreen extends StatefulWidget {
 
 class _EmergencySosScreenState extends State<EmergencySosScreen> with SingleTickerProviderStateMixin {
   late final AnimationController _pulseController;
-  Timer? _statusTimer;
-  double _dispatchProgress = 0;
-
-  List<String> _steps(AppLocalizations l10n) => [
-        l10n.sosStep1,
-        l10n.sosStep2,
-        l10n.sosStep3,
-        l10n.sosStep4,
-      ];
-  int _stepIndex = 0;
   late final _firestore = widget.firestoreOverride ?? FirestoreService();
+  AppUser? _assignedChw;
 
   @override
   void initState() {
     super.initState();
     _pulseController = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat();
+    _loadAssignedChw();
+  }
+
+  Future<void> _loadAssignedChw() async {
+    final mother = context.read<SessionProvider>().currentUser;
+    final chwId = mother?.assignedChwId;
+    if (chwId == null) return;
+    final chw = await _firestore.getUserById(chwId);
+    if (mounted) setState(() => _assignedChw = chw);
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
-    _statusTimer?.cancel();
     super.dispose();
   }
 
-  void _triggerSos(AppData data, AppLocalizations l10n) {
-    final steps = _steps(l10n);
+  void _triggerSos(AppData data) {
     data.startSos();
-    _stepIndex = 0;
-    _dispatchProgress = 0.15;
-    data.updateSosStatus(steps[_stepIndex]);
+    data.updateSosStatus('Help request sent to the care team queue.');
 
-    // Real backend hook: this is what the Admin dashboard's "Live Requests
-    // Feed" and active-SOS counter are watching in real time.
     final mother = context.read<SessionProvider>().currentUser;
     if (mother != null) {
       _firestore.createHelpRequest(HelpRequest(
@@ -66,31 +60,37 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with SingleTick
         createdAt: DateTime.now(),
       ));
     }
-
-    _statusTimer?.cancel();
-    _statusTimer = Timer.periodic(const Duration(seconds: 2), (t) {
-      if (_stepIndex < steps.length - 1) {
-        _stepIndex++;
-        _dispatchProgress = (_stepIndex + 1) / steps.length;
-        data.updateSosStatus(steps[_stepIndex]);
-        setState(() {});
-      } else {
-        t.cancel();
-      }
-    });
     setState(() {});
   }
 
   void _cancelSos(AppData data) {
-    _statusTimer?.cancel();
     data.cancelSos();
-    setState(() => _dispatchProgress = 0);
+    setState(() {});
+  }
+
+  void _messageChw(AppUser mother) {
+    final chw = _assignedChw;
+    if (chw == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ChatView(
+          currentUserId: mother.uid,
+          currentUserName: mother.name,
+          currentUserPhotoUrl: mother.photoUrl,
+          otherUserId: chw.uid,
+          otherUserName: chw.name,
+          otherUserPhotoUrl: chw.photoUrl,
+          appBarTitle: 'Chat with ${chw.name}',
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final data = context.watch<AppData>();
     final l10n = AppLocalizations.of(context)!;
+    final mother = context.watch<SessionProvider>().currentUser;
 
     return Scaffold(
       appBar: MamaAppBar(title: l10n.emergencySosTitle, showBack: true),
@@ -107,7 +107,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with SingleTick
                     return Transform.scale(scale: scale, child: child);
                   },
                   child: GestureDetector(
-                    onTap: () => data.sosActive ? null : _triggerSos(data, l10n),
+                    onTap: () => data.sosActive ? null : _triggerSos(data),
                     child: Container(
                       width: 220,
                       height: 220,
@@ -126,7 +126,7 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with SingleTick
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 24),
                             child: Text(
-                              data.sosActive ? l10n.dispatchInProgress : l10n.tapToCallAmbulance,
+                              data.sosActive ? 'Alert sent' : l10n.tapToCallAmbulance,
                               textAlign: TextAlign.center,
                               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                             ),
@@ -138,13 +138,10 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with SingleTick
                 ),
                 const SizedBox(height: 16),
                 if (data.sosActive)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.wifi_protected_setup, size: 16, color: AppColors.error),
-                      const SizedBox(width: 6),
-                      Text(l10n.connectingToDispatch, style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600)),
-                    ],
+                  Text(
+                    'Your SOS was added to the care team queue. A health worker can claim it and contact you.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600),
                   ),
               ],
             ),
@@ -153,30 +150,36 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with SingleTick
 
           if (data.sosActive) ...[
             BentoCard(
-              child: Row(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(color: AppColors.onTertiaryContainer, borderRadius: BorderRadius.circular(AppRadius.md)),
-                    child: Icon(Icons.location_on_outlined, color: AppColors.primary),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(l10n.liveStatusTitle, style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary)),
-                        const SizedBox(height: 4),
-                        Text(data.sosStatusText, style: const TextStyle(fontSize: 13)),
-                        const SizedBox(height: 8),
-                        ProgressTrack(value: _dispatchProgress),
-                      ],
+                  Text(l10n.liveStatusTitle, style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary)),
+                  const SizedBox(height: 4),
+                  Text(data.sosStatusText, style: const TextStyle(fontSize: 13)),
+                  if (_assignedChw != null) ...[
+                    const SizedBox(height: 8),
+                    Text('Assigned CHW: ${_assignedChw!.name}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  ] else ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'No CHW assigned yet — your request is in the open queue for available health workers.',
+                      style: TextStyle(fontSize: 13, color: AppColors.secondary),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
+            if (mother != null && _assignedChw != null) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _messageChw(mother),
+                  icon: const Icon(Icons.chat_bubble_outline),
+                  label: Text('Message ${_assignedChw!.name}'),
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
@@ -202,10 +205,21 @@ class _EmergencySosScreenState extends State<EmergencySosScreen> with SingleTick
           SectionHeader(title: l10n.emergencyContactsTitle),
           const SizedBox(height: 12),
           BentoCard(
-            child: Text(
-              l10n.emergencyContactsNotice('${data.profile.emergencyContactsCount}'),
-              style: TextStyle(fontSize: 13, color: AppColors.secondary),
-            ),
+            child: mother == null || mother.emergencyContacts.isEmpty
+                ? Text(
+                    'No emergency contacts saved yet. Add them in Profile.',
+                    style: TextStyle(fontSize: 13, color: AppColors.secondary),
+                  )
+                : Column(
+                    children: mother.emergencyContacts
+                        .map((c) => ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: Icon(Icons.person_outline, color: AppColors.primary),
+                              title: Text(c.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                              subtitle: Text(c.phone),
+                            ))
+                        .toList(),
+                  ),
           ),
         ],
       ),

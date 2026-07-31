@@ -3,10 +3,10 @@ import 'package:provider/provider.dart';
 import '../../providers/session_provider.dart';
 import '../../theme/app_theme.dart';
 
-/// Shown by AuthGate for a signed-in email/password account that hasn't
-/// clicked the verification link Firebase sent on registration yet. Google
-/// accounts skip this entirely (SessionProvider.needsEmailVerification is
-/// always false for them).
+/// Shown by AuthGate for a signed-in account that hasn't confirmed email yet
+/// (`AppUser.emailConfirmed == false`). Applies to email/password and Google
+/// signups until the user completes verification (or taps continue after
+/// Firebase already marks the email verified, e.g. Google).
 class VerifyEmailScreen extends StatefulWidget {
   const VerifyEmailScreen({super.key});
 
@@ -62,7 +62,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                 Text('Verify your email', style: Theme.of(context).textTheme.headlineSmall),
                 const SizedBox(height: 8),
                 Text(
-                  'We sent a verification link to $email. Click it, then come back and tap "I\'ve verified".',
+                  'Confirm $email to continue. If you signed up with email, open the link we sent, then tap "I\'ve verified". Google accounts can usually continue after tapping the button below.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.secondary),
                 ),

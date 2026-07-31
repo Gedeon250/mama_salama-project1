@@ -6,6 +6,7 @@ import '../root_shell.dart';
 import '../chw/chw_shell.dart';
 import '../admin/admin_shell.dart';
 import '../hospital/hospital_shell.dart';
+import '../onboarding/pregnancy_onboarding_screen.dart';
 import 'login_screen.dart';
 import 'verify_email_screen.dart';
 import 'chw_application_screen.dart';
@@ -27,6 +28,7 @@ class AuthGate extends StatelessWidget {
         final user = session.currentUser!;
         switch (user.role) {
           case UserRole.mother:
+            if (!user.hasPregnancyProfile) return const PregnancyOnboardingScreen();
             return const RootShell();
           case UserRole.chw:
             return const ChwShell();

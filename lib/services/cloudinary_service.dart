@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:cloudinary_public/cloudinary_public.dart';
 import 'package:dio/dio.dart';
+import '../utils/form_validators.dart';
 
 enum ChwDocumentKind { cv, proofOfExpertise }
 
@@ -10,6 +11,7 @@ class CloudinaryService {
   final CloudinaryPublic _client;
 
   Future<String> uploadProfilePicture(String uid, File file) async {
+    FormValidators.assertAttachmentAllowed(file, allowedExtensions: const ['png', 'jpg', 'jpeg']);
     final response = await _upload(
       CloudinaryFile.fromFile(
         file.path,
@@ -22,6 +24,7 @@ class CloudinaryService {
   }
 
   Future<String> uploadChwDocument(String uid, File file, ChwDocumentKind kind) async {
+    FormValidators.assertAttachmentAllowed(file);
     // PDFs are image assets on Cloudinary; forcing Raw against an unsigned
     // image-oriented preset returns HTTP 400. Auto lets Cloudinary pick
     // image/raw/video from the file.
@@ -37,11 +40,28 @@ class CloudinaryService {
   }
 
   Future<String> uploadChatAttachment(String threadId, File file, {required bool isImage}) async {
+    FormValidators.assertAttachmentAllowed(
+      file,
+      allowedExtensions: isImage ? const ['png', 'jpg', 'jpeg'] : const ['pdf'],
+    );
     final response = await _upload(
       CloudinaryFile.fromFile(
         file.path,
         resourceType: isImage ? CloudinaryResourceType.Image : CloudinaryResourceType.Auto,
         folder: 'chat_attachments/$threadId',
+        identifier: '${DateTime.now().millisecondsSinceEpoch}${_extensionOf(file.path)}',
+      ),
+    );
+    return response.secureUrl;
+  }
+
+  Future<String> uploadPregnancyAttachment(String uid, File file) async {
+    FormValidators.assertAttachmentAllowed(file);
+    final response = await _upload(
+      CloudinaryFile.fromFile(
+        file.path,
+        resourceType: CloudinaryResourceType.Auto,
+        folder: 'pregnancy_attachments/$uid',
         identifier: '${DateTime.now().millisecondsSinceEpoch}${_extensionOf(file.path)}',
       ),
     );
