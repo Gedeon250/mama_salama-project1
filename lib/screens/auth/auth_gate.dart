@@ -18,6 +18,7 @@ class AuthGate extends StatelessWidget {
   Widget build(BuildContext context) {
     final session = context.watch<SessionProvider>();
 
+    ///Navigate users to the appropriate dashboard based on their assigned role.
     switch (session.status) {
       case SessionStatus.signedOut:
         return const LoginScreen();
